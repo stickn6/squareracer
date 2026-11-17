@@ -1,0 +1,3347 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Square Scramble</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Rubik:wght@400;500;700&display=swap">
+<style>
+  /* Layout: a full-bleed green checker field. In play, a paper HUD strip sits on top and the framed
+     level fills the rest. Menus and result cards are square-cornered paper cards with ink borders. */
+  :root {
+    --grass: #7ef07e;
+    --grass-deep: #6ce46d;
+    --ink: #12301a;
+    --ink-soft: #3d5a44;
+    --paper: #fffbe3;
+    --orchid: #d86af0;
+    --finish: #e33f6c;
+    --finish-deep: #b9234e;
+    --sun: #ffd43a;
+    --font-display: 'Bungee', 'Arial Black', Impact, sans-serif;
+    --font-body: 'Rubik', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    color-scheme: light;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background-color: var(--grass);
+    background-image: conic-gradient(var(--grass-deep) 25%, transparent 0 50%, var(--grass-deep) 0 75%, transparent 0);
+    background-size: 44px 44px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.4;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+  h1, h2, p, dl, dd { margin: 0; }
+  button { font: inherit; color: inherit; cursor: pointer; border-radius: 0; }
+  button:focus-visible { outline: 3px solid var(--finish-deep); outline-offset: 3px; }
+
+  /* ---------- play surface ---------- */
+  #cv { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; z-index: 0; }
+  #app {
+    position: relative; z-index: 1; height: 100%;
+    display: flex; flex-direction: column; gap: 6px;
+    padding-block: 8px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    pointer-events: none;
+  }
+  #hud {
+    display: flex; align-items: center; gap: 10px;
+    width: 100%; max-width: 560px; margin-inline: auto;
+    background: var(--paper); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+    padding: 5px 10px 5px 5px; min-height: 46px;
+  }
+  #pauseBtn {
+    pointer-events: auto; flex: none; width: 36px; height: 36px; padding: 0;
+    background: var(--ink); border: 0; display: grid; place-items: center;
+  }
+  #pauseBtn span { width: 14px; height: 16px; border-inline: 5px solid var(--paper); }
+  .hud-id { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+  .hud-num {
+    flex: none; font-family: var(--font-display); font-size: 1.05rem; line-height: 1;
+    min-width: 30px; height: 30px; display: grid; place-items: center; padding-inline: 4px;
+    border: 3px solid var(--ink); background: var(--sun);
+  }
+  .hud-text { min-width: 0; display: flex; flex-direction: column; line-height: 1.15; }
+  #hudName { font-weight: 700; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hudMode { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hud-stat { flex: none; display: flex; align-items: center; gap: 10px; }
+  .lives { display: flex; align-items: center; gap: 4px; }
+  .lives .bar { display: block; width: 42px; height: 13px; border: 2px solid var(--ink); }
+  .lives .bar b { display: block; height: 100%; background: var(--c, var(--finish)); }
+  .lives .hpn { font-family: var(--font-display); font-size: .9rem; font-variant-numeric: tabular-nums; min-width: 2ch; text-align: right; }
+  .lives i { width: 13px; height: 13px; border: 2px solid var(--ink); background: var(--c, var(--finish)); }
+  .lives i.gone { background: transparent; opacity: .45; }
+  #hudTime { font-family: var(--font-display); font-size: 1.05rem; font-variant-numeric: tabular-nums; min-width: 3.3em; text-align: right; }
+  #field { flex: 1; min-height: 0; }
+
+  /* ---------- cards ---------- */
+  .card { background: var(--paper); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); padding: 18px; }
+  .kicker { display: flex; align-items: center; gap: 8px; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .chip { font-size: .64rem; font-weight: 700; line-height: 1; letter-spacing: .08em; text-transform: uppercase; padding: 3px 5px; border: 2px solid var(--ink); }
+  .chip.race { background: var(--finish-deep); color: var(--paper); }
+  .chip.battle { background: var(--ink); color: var(--sun); }
+  .chip.gun { background: var(--sun); color: var(--ink); }
+  .chip.heat { background: #ff7a1a; color: var(--ink); }
+  .chip.boss { background: #5b2bbf; color: #fff; }
+  .chip.duel { background: var(--finish); color: #fff; }
+  .card h2 { font-family: var(--font-display); font-weight: 400; font-size: clamp(1.5rem, 7.5vw, 2rem); line-height: 1; margin-top: 8px; text-wrap: balance; }
+  .card p { margin-top: 8px; }
+
+  #intro {
+    position: fixed; z-index: 2; pointer-events: none;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: min(320px, calc(100% - 64px));
+    padding: 14px 16px;
+  }
+  #intro .tip { font-size: .9rem; color: var(--ink-soft); }
+  #intro .hint { margin-top: 12px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; }
+  #intro .hint i { width: 12px; height: 12px; background: var(--finish); border: 2px solid var(--ink); animation: nudge 1s ease-in-out infinite alternate; }
+  @keyframes nudge { from { transform: translateX(0); } to { transform: translateX(10px); } }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 5;
+    display: grid; place-items: center;
+    background: rgba(18, 48, 26, .62);
+    padding-top: max(16px, env(safe-area-inset-top, 0px));
+    padding-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  #overlay .card { width: min(100%, 340px); }
+  .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+
+  .btn {
+    font-family: var(--font-display); font-size: 1rem; line-height: 1.1; text-align: center;
+    padding: 12px 14px; background: var(--paper); color: var(--ink);
+    border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+    transition: transform .06s, box-shadow .06s;
+  }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn.primary { background: var(--finish); color: #fff; text-shadow: 1px 1px 0 var(--finish-deep); }
+  .btn.quiet { font-family: var(--font-body); font-weight: 700; font-size: .9rem; box-shadow: none; }
+
+  /* ---------- menu ---------- */
+  #menu {
+    position: fixed; inset: 0; z-index: 4; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .menu-inner { max-width: 640px; margin-inline: auto; padding-block: 22px 28px; display: flex; flex-direction: column; gap: 20px; }
+  .mast { display: flex; flex-direction: column; gap: 10px; }
+  .racers { display: flex; gap: 30px; padding-left: 26px; height: 30px; align-items: center; }
+  .rc { position: relative; width: 26px; height: 26px; background: var(--c); border: 3px solid var(--ink); animation: dash 1.6s ease-in-out infinite alternate; }
+  .rc:nth-child(2) { animation-duration: 1.15s; }
+  .rc:nth-child(3) { animation-duration: 1.9s; }
+  .rc:nth-child(4) { animation-duration: 1.35s; }
+  .rc::before, .rc::after { content: ''; position: absolute; top: 4px; width: 7px; height: 7px; background: #fff; box-shadow: inset -3px -3px 0 var(--ink); }
+  .rc::before { left: 2px; } .rc::after { right: 2px; }
+  .rc i { position: absolute; right: calc(100% + 3px); top: 1px; width: 22px; height: 18px; background: var(--c); opacity: .55; clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+  @keyframes dash { from { transform: translateX(-6px); } to { transform: translateX(14px); } }
+  h1 {
+    font-family: var(--font-display); font-weight: 400;
+    font-size: clamp(2.5rem, 13vw, 4.4rem); line-height: .9; letter-spacing: -.01em;
+    color: var(--ink); text-shadow: 3px 3px 0 var(--paper);
+  }
+  .lede { font-weight: 500; max-width: 36ch; }
+  .panel { background: var(--paper); border: 3px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); padding: 14px; }
+  .menu-inner h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.05rem; line-height: 1.1; }
+  .colors { display: grid; grid-template-columns: repeat(7, minmax(0, 58px)); gap: 8px; margin-top: 12px; }
+  .skins { display: grid; grid-template-columns: repeat(4, minmax(0, 104px)); gap: 8px; margin-top: 8px; }
+  .pick-sub { margin-top: 14px; font-size: .74rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+  .swatch { display: flex; flex-direction: column; align-items: center; min-width: 0; padding: 0; background: transparent; border: 3px solid transparent; transition: transform .08s; }
+  .swatch canvas { display: block; width: 100%; height: auto; aspect-ratio: 1; max-width: 100%; }
+  .swatch .nm { font-weight: 700; font-size: .82rem; line-height: 1.1; padding-bottom: 5px; }
+  .swatch[aria-checked="true"] { transform: translateY(-3px); background: var(--sun); border-color: var(--ink); box-shadow: 4px 4px 0 var(--ink); }
+  .lives-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .lives-row input[type="range"] { flex: 1; min-width: 0; height: 36px; margin: 0; accent-color: var(--finish-deep); }
+  .step {
+    flex: none; width: 42px; height: 42px; padding: 0; font-family: var(--font-display); font-size: 1.3rem; line-height: 1;
+    background: var(--paper); border: 3px solid var(--ink); box-shadow: 3px 3px 0 var(--ink);
+  }
+  .step:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  #livesOut { flex: none; min-width: 2.4ch; text-align: right; font-family: var(--font-display); font-size: 1.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .note { margin-top: 8px; font-size: .86rem; color: var(--ink-soft); }
+  #playBtn { font-size: 1.25rem; padding-block: 16px; box-shadow: 6px 6px 0 var(--ink); }
+  .levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+  @media (min-width: 560px) { .levels { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+  .lv {
+    display: flex; flex-direction: column; gap: 5px; min-width: 0; text-align: left;
+    padding: 6px 6px 8px; background: var(--paper); border: 3px solid var(--ink); box-shadow: 4px 4px 0 var(--ink);
+    transition: transform .06s, box-shadow .06s;
+  }
+  .lv:active { transform: translate(3px, 3px); box-shadow: 1px 1px 0 var(--ink); }
+  .lv canvas { display: block; width: 100%; height: auto; max-width: 100%; border: 2px solid var(--ink); image-rendering: pixelated; }
+  .lv .row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .lv .n { font-family: var(--font-display); font-size: 1.1rem; line-height: 1; min-width: 1.4em; }
+  .lv .name { font-weight: 700; font-size: .84rem; line-height: 1.15; overflow-wrap: anywhere; }
+  .lv .best { font-size: .74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .lv.done .best { color: var(--ink); font-weight: 700; }
+  .how dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 8px 12px; margin-top: 10px; font-size: .92rem; }
+  .how dt { font-weight: 700; }
+  .foot { display: flex; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rc, #intro .hint i { animation: none; }
+    .btn, .lv, .swatch { transition: none; }
+  }
+</style>
+
+<canvas id="cv" hidden></canvas>
+
+<div id="app" hidden>
+  <header id="hud">
+    <button id="pauseBtn" type="button" aria-label="Pause"><span></span></button>
+    <div class="hud-id">
+      <span class="hud-num" id="hudNum">1</span>
+      <div class="hud-text"><span id="hudName"></span><span id="hudMode"></span></div>
+    </div>
+    <div class="hud-stat">
+      <span class="lives" id="hudLives" role="img" aria-label="Lives"></span>
+      <span id="hudTime">0.0</span>
+    </div>
+  </header>
+  <div id="field"></div>
+</div>
+
+<div id="intro" class="card" hidden>
+  <p class="kicker"><span id="introNum"></span><span id="introChip" class="chip"></span></p>
+  <h2 id="introName"></h2>
+  <p id="introGoal"></p>
+  <p id="introTip" class="tip"></p>
+  <p class="hint"><i></i><span id="introHint"></span></p>
+</div>
+
+<div id="overlay" hidden>
+  <div class="card" role="dialog" aria-labelledby="ovTitle">
+    <p class="kicker"><span id="ovKicker"></span></p>
+    <h2 id="ovTitle"></h2>
+    <p id="ovText"></p>
+    <div class="actions" id="ovActions"></div>
+  </div>
+</div>
+
+<main id="menu">
+  <div class="menu-inner">
+    <header class="mast">
+      <div class="racers" id="racers" aria-hidden="true">
+        <span class="rc"><i></i></span><span class="rc"><i></i></span><span class="rc"><i></i></span><span class="rc"><i></i></span>
+      </div>
+      <h1>Square<br>Scramble</h1>
+      <p class="lede">Steer one square through thirty-four levels of races, battles, gunfights, heat rounds, boss races and boss duels. Drag anywhere to turn. Time slows while you touch.</p>
+    </header>
+
+    <section class="panel" aria-labelledby="pickH">
+      <h2 id="pickH">Pick your square</h2>
+      <div role="radiogroup" aria-labelledby="pickH">
+        <div id="colors" class="colors"></div>
+        <p class="pick-sub">Characters</p>
+        <div id="skins" class="skins"></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="livesH">
+      <h2 id="livesH">Your lives in battles</h2>
+      <div class="lives-row">
+        <button id="livesDown" type="button" class="step" aria-label="One life fewer">&minus;</button>
+        <input id="livesRange" type="range" min="1" max="50" step="1" value="3" aria-labelledby="livesH">
+        <button id="livesUp" type="button" class="step" aria-label="One life more">+</button>
+        <output id="livesOut" for="livesRange">3</output>
+      </div>
+      <p class="note">Anything from 1 to 50, for battles and gunfights. Rivals keep their usual 2 or 3.</p>
+    </section>
+
+    <button id="playBtn" type="button" class="btn primary">Play level 1</button>
+
+    <section aria-labelledby="lvH">
+      <h2 id="lvH">Levels</h2>
+      <div id="levels" class="levels"></div>
+    </section>
+
+    <section class="panel how" aria-labelledby="howH">
+      <h2 id="howH">How it works</h2>
+      <dl>
+        <dt>Steer</dt><dd>Touch the screen and drag. Your square heads the way you drag, in any direction, and bounces off walls.</dd>
+        <dt>Slow time</dt><dd>While your finger is down the game runs at quarter speed. Let go and it snaps back.</dd>
+        <dt>Race</dt><dd>Be the first square into the red zone. Spikes, saws and TNT stun you for a second.</dd>
+        <dt>Battle</dt><dd>Ram rivals nose-first to take a life. If one hits your side, you lose one. Shove a rival and hazards hurt it too.</dd>
+        <dt>Gunfight</dt><dd>Reach the gun first. It fires three shots at the nearest square, then drops and can be grabbed again a second later. Only bullets hurt in these rounds.</dd>
+        <dt>Heat round</dt><dd>Touch the flame first. You keep its ring for the whole round, and it melts any square it reaches, whatever lives that square has.</dd>
+        <dt>Boss race</dt><dd>A big boss guards the red zone, and a square it gets is out of the race. Volt shocks every square inside its ring. Frost throws ice shards along its red aim lines. Sarge chases you until he runs out of breath. The strip at the bottom of the boss room is safe.</dd>
+        <dt>Boss duel</dt><dd>Just you and a boss. You start with the heat ring and have to get it onto him a few times. Volt sends sparks along a red strip. Frost throws ice along red lines, and a hit freezes you for a moment. Every hit costs a life.</dd>
+        <dt>Rivals</dt><dd>The other three squares travel on diagonals and turn every time they hit a wall or a square.</dd>
+      </dl>
+    </section>
+
+    <div class="foot"><button id="soundBtn" type="button" class="btn quiet">Sound on</button></div>
+  </div>
+</main>
+
+<script>
+(function () {
+/* ---------- simulation core (no DOM) ---------- */
+var SQ = 1.3, HALF = SQ / 2, EPS = 1e-5;
+var PLAYER_SPEED = 7.2, BOOST_MULT = 1.6, BOOST_TIME = 1.1;
+var JIT = 0.09, BLAST = 2.7, INV_TIME = 1.0, CLASH_EDGE = 0.15, STUN_TIME = 1.1, STAG_TIME = 1.6;
+var HEAT_R = 1.75, HEAT_RAMP = 0.03, HEAT_TOP = 1.6;
+/* bosses: twice the size of a square, each with its own way of knocking squares out */
+var BOSS_HALF = 1.3;
+var VOLT_R = 4.6, VOLT_IDLE = 2.6, VOLT_CHARGE = 1.0;
+var FROST_GAP = 3.2, FROST_TELL = 0.8, FROST_FAN = 0.32, SHARD_SPEED = 8, SHARD_R = 0.26;
+var COP_SPEED = 4.0, COP_CHASE = 2.0, COP_REST = 3.6, COP_WIND = 0.8;
+/* the duel: Volt throws waves of sparks at the player, who has to get the heat ring onto him */
+var WAVE_TELL = 0.6, WAVE_STEP = 0.6, DUEL_INV = 1.2, DUEL_GAP = [1.7, 2.0, 2.4], DUEL_SPEED = [6.6, 6.3, 6], DUEL_SPARKS = [7, 5, 5];
+/* Frost's duel: fans of ice shards. A hit takes a life and freezes the player solid for a moment. */
+var ICE_TELL = 0.8, ICE_FREEZE = 0.7, ICE_SPEED = 8, ICE_GAPS = [2.1, 2.5, 2.9], ICE_FANS = [5, 3, 3];
+var GUN_SHOTS = 3, GUN_FIRST = 0.4, GUN_GAP = 0.3, GUN_COOL = 1.0, BULLET_SPEED = 20, BULLET_INV = 0.45;
+
+function makeRng(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function makeGame(level, opts) {
+  opts = opts || {};
+  var rnd = makeRng(opts.seed || 1);
+  var grid = level.map.map(function (r) { return r.split(''); });
+  var H = grid.length, W = grid[0].length, spawns = [], dyn = [], guns = [], heats = [];
+  for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+    var c = grid[y][x];
+    if (c >= '1' && c <= '7') { spawns[+c - 1] = { x: x + 0.5, y: y + 0.5 }; grid[y][x] = ' '; }
+    else if (c === 'H') { heats.push({ x: x + 0.5, y: y + 0.5, holder: null, t: 0, cool: 0, path: null }); grid[y][x] = ' '; }
+    else if (c === 'G') { guns.push({ x: x + 0.5, y: y + 0.5, holder: null, cool: 0, shots: 0, timer: 0, aim: -0.4 }); grid[y][x] = ' '; }
+    else if ('CT+durl'.indexOf(c) >= 0) dyn.push({ x: x, y: y });
+  }
+  var g = {
+    level: level, mode: level.mode, W: W, H: H, grid: grid, dyn: dyn,
+    squares: [], saws: [], fuses: [], guns: guns, bullets: [], heats: heats, time: 0, state: 'ready', over: null,
+    events: [], rnd: rnd, noEnd: !!opts.noEnd, boss: null, shards: [], sparks: [], waveId: 0
+  };
+  /* a flame can slide to and fro until somebody catches it: [x1, y1, x2, y2, speed] */
+  (level.flames || []).forEach(function (f) {
+    heats.push({ x: f[0], y: f[1], holder: null, t: 0, cool: 0, path: { x1: f[0], y1: f[1], x2: f[2], y2: f[3], len: Math.hypot(f[2] - f[0], f[3] - f[1]), speed: f[4], p: 0, sgn: 1 } });
+  });
+  if (level.boss) {
+    var bc = level.boss;
+    var pth = bc.path || (bc.patrol ? [bc.patrol[0], bc.y, bc.patrol[1], bc.y] : [bc.x, bc.y, bc.x, bc.y]);
+    g.boss = {
+      type: bc.type, name: bc.name, x: bc.x, y: bc.y, hx: bc.x, hy: bc.y, half: BOSS_HALF,
+      px1: pth[0], py1: pth[1], px2: pth[2], py2: pth[3], plen: Math.hypot(pth[2] - pth[0], pth[3] - pth[1]), pp: Math.hypot(bc.x - pth[0], bc.y - pth[1]),
+      speed: bc.speed || 0, dir: 1, R: bc.r || VOLT_R, idle: bc.idle || VOLT_IDLE, chargeT: bc.charge || VOLT_CHARGE,
+      zone: bc.zone, t: 0, charge: 0, tell: 0, lock: false, aim: Math.PI / 2, target: null, phase: 'home', stam: COP_CHASE, run: 0,
+      duel: !!bc.duel, hp: bc.hp || 0, maxHp: bc.hp || 0, inv: 0, spots: bc.spots || null,
+      gaps: bc.gaps || ICE_GAPS, fans: bc.fans || ICE_FANS, reaim: bc.reaim || null, fanN: 3
+    };
+    /* start each run at a different point in the boss's rhythm */
+    if (bc.duel) g.boss.t = -rnd() * 0.4 - (bc.type === 'frost' ? 0.7 : 0);
+    else if (bc.type !== 'cop') {
+      g.boss.t = rnd() * (bc.type === 'volt' ? g.boss.idle + g.boss.chargeT * 0.8 : FROST_GAP - FROST_TELL); g.boss.dir = rnd() < 0.5 ? -1 : 1;
+      /* first: [earliest, latest] time of Volt's first flash, for levels that want it early */
+      if (bc.first && bc.type === 'volt') g.boss.t = g.boss.idle + g.boss.chargeT - (bc.first[0] + rnd() * (bc.first[1] - bc.first[0]));
+    }
+  }
+  for (var i = 0; i < spawns.length; i++) {
+    var isP = i === 0 && !opts.allAI;
+    var s = {
+      id: i, isPlayer: isP, x: spawns[i].x, y: spawns[i].y, ux: 0, uy: 0,
+      speed: isP ? PLAYER_SPEED : level.aiSpeed,
+      hp: isP ? (level.mode === 'battle' && opts.playerHp > 0 ? opts.playerHp : 3) : (level.enemyHp || 3), inv: 0, boost: 0, stun: 0, ice: 0, stag: 0, tink: 0, gun: null, heat: null, burnedBy: null, outBy: null, dead: false, finT: -1
+    };
+    s.maxHp = s.hp;
+    if (isP) {
+      var d = level.pdir || [1, 0], m = Math.hypot(d[0], d[1]);
+      s.ux = d[0] / m; s.uy = d[1] / m;
+    } else {
+      s.ux = rnd() < 0.5 ? -1 : 1; s.uy = rnd() < 0.5 ? -1 : 1; rejit(g, s);
+    }
+    g.squares.push(s);
+  }
+  if (opts.noPlayer) g.squares[0].dead = true;
+  /* in the duel the player starts with the heat ring already on */
+  if (level.duel) { var hh = { x: g.squares[0].x, y: g.squares[0].y, holder: g.squares[0], t: 0, cool: 0, path: null }; heats.push(hh); g.squares[0].heat = hh; }
+  (level.saws || []).forEach(function (w) {
+    var len = Math.hypot(w[2] - w[0], w[3] - w[1]);
+    g.saws.push({
+      x1: w[0], y1: w[1], x2: w[2], y2: w[3], len: len, speed: w[4], r: w[5] || 0.8,
+      p: (w[6] || 0) * len, sgn: 1, x: w[0], y: w[1], rot: 0
+    });
+  });
+  placeSaws(g, 0);
+  return g;
+}
+
+function tileAt(g, cx, cy) {
+  return (cx < 0 || cy < 0 || cx >= g.W || cy >= g.H) ? '#' : g.grid[cy][cx];
+}
+
+/* AI squares travel on diagonals: keep the signs, re-roll the angle a hair so they never lock into a loop */
+function rejit(g, s) {
+  var th = Math.PI / 4 + (g.rnd() * 2 - 1) * JIT;
+  s.ux = (s.ux < 0 ? -1 : 1) * Math.cos(th);
+  s.uy = (s.uy < 0 ? -1 : 1) * Math.sin(th);
+}
+
+function blocks(t, axis, d, px, py, cx, cy) {
+  switch (t) {
+    case '#': case 'A': case 'V': case '<': case '>': case 'C': case 'T': return true;
+    case 'd': return axis === 1 && d < 0 && (py - HALF) >= cy + 1 - 0.06;
+    case 'u': return axis === 1 && d > 0 && (py + HALF) <= cy + 0.06;
+    case 'r': return axis === 0 && d < 0 && (px - HALF) >= cx + 1 - 0.06;
+    case 'l': return axis === 0 && d > 0 && (px + HALF) <= cx + 0.06;
+  }
+  return false;
+}
+
+/* move one axis, clamp against tiles. Returns true when blocked. dry = no tile effects. */
+function moveAxis(g, s, axis, d, dry) {
+  if (d === 0) return false;
+  var px = s.x, py = s.y;
+  if (axis === 0) s.x += d; else s.y += d;
+  var x0 = Math.floor(s.x - HALF + EPS), x1 = Math.floor(s.x + HALF - EPS);
+  var y0 = Math.floor(s.y - HALF + EPS), y1 = Math.floor(s.y + HALF - EPS);
+  var hits = null, lo = 1e9, hi = -1e9;
+  for (var cy = y0; cy <= y1; cy++) for (var cx = x0; cx <= x1; cx++) {
+    var t = tileAt(g, cx, cy);
+    if (t === ' ' || t === 'F' || t === '+') continue;
+    if (blocks(t, axis, d, px, py, cx, cy)) {
+      (hits || (hits = [])).push(cx, cy);
+      var k = axis === 0 ? cx : cy;
+      if (k < lo) lo = k; if (k > hi) hi = k;
+    }
+  }
+  if (!hits) return false;
+  if (axis === 0) s.x = d > 0 ? lo - HALF : hi + 1 + HALF;
+  else s.y = d > 0 ? lo - HALF : hi + 1 + HALF;
+  if (!dry) {
+    for (var i = 0; i < hits.length; i += 2) {
+      var hx = hits[i], hy = hits[i + 1], ht = tileAt(g, hx, hy);
+      if (ht === 'A' || ht === 'V' || ht === '<' || ht === '>') hurt(g, s, 'spike');
+      else if (ht === 'C') breakCrate(g, hx, hy);
+      else if (ht === 'T') explode(g, hx, hy);
+    }
+  }
+  return true;
+}
+
+function hurt(g, s, src) {
+  if (s.dead || s.inv > 0 || g.over) return false;
+  /* gun rounds: bullets are the only thing that hurts */
+  if (g.level.gun && src !== 'bullet') return false;
+  /* races are about time: a hazard stuns. battles are about lives: a hazard takes one. */
+  if (g.mode === 'race') {
+    s.stun = STUN_TIME; s.inv = STUN_TIME + 0.6;
+    g.events.push({ type: 'stun', s: s, src: src });
+    return true;
+  }
+  /* in battles rivals are armoured against spikes and saws until the player staggers them */
+  if (!s.isPlayer && s.stag <= 0 && (src === 'spike' || src === 'saw')) {
+    if (s.tink <= 0) { s.tink = 0.3; g.events.push({ type: 'tink', s: s }); }
+    return false;
+  }
+  s.hp -= 1; s.inv = INV_TIME;
+  g.events.push({ type: 'hurt', s: s, src: src });
+  if (s.hp <= 0) { s.dead = true; g.events.push({ type: 'death', s: s }); }
+  return true;
+}
+
+function knock(g, s, fx, fy) {
+  var dx = s.x - fx, dy = s.y - fy, m = Math.hypot(dx, dy);
+  if (m < 0.01) return;
+  if (s.isPlayer) { s.ux = dx / m; s.uy = dy / m; }
+  else {
+    if (Math.abs(dx) > 0.2) s.ux = dx > 0 ? 1 : -1;
+    if (Math.abs(dy) > 0.2) s.uy = dy > 0 ? 1 : -1;
+    rejit(g, s);
+  }
+}
+
+function breakCrate(g, cx, cy) {
+  if (g.grid[cy][cx] !== 'C') return;
+  g.grid[cy][cx] = ' ';
+  g.events.push({ type: 'crate', x: cx + 0.5, y: cy + 0.5 });
+}
+
+function explode(g, cx, cy) {
+  if (g.grid[cy][cx] !== 'T') return;
+  g.grid[cy][cx] = ' ';
+  var ex = cx + 0.5, ey = cy + 0.5, R = BLAST, n = Math.ceil(R);
+  g.events.push({ type: 'explode', x: ex, y: ey, r: R });
+  for (var y = cy - n; y <= cy + n; y++) for (var x = cx - n; x <= cx + n; x++) {
+    if (x < 0 || y < 0 || x >= g.W || y >= g.H) continue;
+    if (Math.hypot(x - cx, y - cy) > R) continue;
+    var t = g.grid[y][x];
+    if (t === 'C') breakCrate(g, x, y);
+    else if (t === 'T') g.fuses.push({ x: x, y: y, t: 0.14 });
+  }
+  for (var i = 0; i < g.squares.length; i++) {
+    var s = g.squares[i];
+    if (s.dead) continue;
+    if (Math.hypot(s.x - ex, s.y - ey) < R + 0.3) { if (hurt(g, s, 'tnt') && g.mode === 'battle') knock(g, s, ex, ey); }
+  }
+}
+
+function placeSaws(g, dt) {
+  for (var i = 0; i < g.saws.length; i++) {
+    var w = g.saws[i];
+    w.p += w.sgn * w.speed * dt;
+    if (w.p > w.len) { w.p = 2 * w.len - w.p; w.sgn = -1; }
+    else if (w.p < 0) { w.p = -w.p; w.sgn = 1; }
+    var k = w.len > 0 ? w.p / w.len : 0;
+    w.x = w.x1 + (w.x2 - w.x1) * k; w.y = w.y1 + (w.y2 - w.y1) * k;
+    w.rot += dt * 9;
+  }
+}
+
+function stepGame(g, dt) {
+  if (g.state !== 'playing') return;
+  var S = g.squares, i, j, s;
+  if (!g.over) g.time += dt;
+  placeSaws(g, dt);
+
+  for (i = g.fuses.length - 1; i >= 0; i--) {
+    var f = g.fuses[i]; f.t -= dt;
+    if (f.t <= 0) { g.fuses.splice(i, 1); explode(g, f.x, f.y); }
+  }
+
+  for (i = 0; i < S.length; i++) {
+    s = S[i];
+    if (s.dead) continue;
+    if (s.inv > 0) s.inv = Math.max(0, s.inv - dt);
+    if (s.ice > 0) s.ice = Math.max(0, s.ice - dt);
+    if (s.boost > 0) s.boost = Math.max(0, s.boost - dt);
+    if (s.stag > 0) s.stag = Math.max(0, s.stag - dt);
+    if (s.tink > 0) s.tink -= dt;
+    if (s.stun > 0) { s.stun = Math.max(0, s.stun - dt); continue; }
+    var sp = s.speed * (s.boost > 0 ? BOOST_MULT : 1);
+    /* a rival holding the heat ring speeds up over time, so the round always ends */
+    if (s.heat && !s.isPlayer) sp *= Math.min(HEAT_TOP, 1 + s.heat.t * HEAT_RAMP);
+    var dx = s.ux * sp * dt, dy = s.uy * sp * dt, hit = false;
+    if (moveAxis(g, s, 0, dx, false)) { s.ux = dx > 0 ? -Math.abs(s.ux) : Math.abs(s.ux); hit = true; }
+    if (!s.dead && moveAxis(g, s, 1, dy, false)) { s.uy = dy > 0 ? -Math.abs(s.uy) : Math.abs(s.uy); hit = true; }
+    if (hit) {
+      if (!s.isPlayer) rejit(g, s);
+      g.events.push({ type: 'bounce', s: s });
+    }
+    if (s.dead) continue;
+    var c = tileAt(g, Math.floor(s.x), Math.floor(s.y));
+    if (c === '+') { if (s.boost <= 0) g.events.push({ type: 'boost', s: s }); s.boost = BOOST_TIME; }
+    else if (c === 'F' && g.mode === 'race') {
+      if (g.noEnd) { s.finT = g.time; s.dead = true; }
+      else if (!g.over) { g.over = { win: s.isPlayer, reason: 'finish', who: s }; g.events.push({ type: 'finish', s: s }); }
+    }
+  }
+
+  /* square vs square */
+  for (i = 0; i < S.length; i++) {
+    var a = S[i]; if (a.dead) continue;
+    for (j = i + 1; j < S.length; j++) {
+      var b = S[j]; if (b.dead) continue;
+      var ddx = b.x - a.x, ddy = b.y - a.y;
+      var px = SQ - Math.abs(ddx), py = SQ - Math.abs(ddy);
+      if (px <= 0 || py <= 0) continue;
+      var axis = px < py ? 0 : 1, pen = axis === 0 ? px : py;
+      var sgn = (axis === 0 ? ddx : ddy) >= 0 ? 1 : -1;
+      var approaching = axis === 0 ? (a.ux * sgn > 0 || b.ux * sgn < 0) : (a.uy * sgn > 0 || b.uy * sgn < 0);
+      if (g.mode === 'battle' && !g.level.gun && approaching && (a.isPlayer || b.isPlayer)) {
+        var m = Math.hypot(ddx, ddy) || 1, nx = ddx / m, ny = ddy / m;
+        var ca = a.ux * nx + a.uy * ny, cb = -(b.ux * nx + b.uy * ny);
+        var win = ca - cb > CLASH_EDGE ? a : (cb - ca > CLASH_EDGE ? b : null), lose = win === a ? b : a;
+        if (win) {
+          if (hurt(g, lose, 'ram')) { g.events.push({ type: 'ram', by: win, on: lose }); if (win.isPlayer) lose.inv = 0.6; }
+          if (win.isPlayer) lose.stag = STAG_TIME;
+        } else {
+          (a.isPlayer ? b : a).stag = STAG_TIME;
+          g.events.push({ type: 'clash', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+        }
+      } else if (approaching) {
+        g.events.push({ type: 'bump', x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, a: a, b: b });
+      }
+      moveAxis(g, a, axis, -sgn * (pen / 2 + 0.002), true);
+      moveAxis(g, b, axis, sgn * (pen / 2 + 0.002), true);
+      if (axis === 0) { a.ux = -sgn * Math.abs(a.ux); b.ux = sgn * Math.abs(b.ux); }
+      else { a.uy = -sgn * Math.abs(a.uy); b.uy = sgn * Math.abs(b.uy); }
+    }
+  }
+
+  /* saws */
+  for (i = 0; i < g.saws.length; i++) {
+    var w = g.saws[i];
+    for (j = 0; j < S.length; j++) {
+      s = S[j]; if (s.dead) continue;
+      var qx = Math.max(s.x - HALF, Math.min(w.x, s.x + HALF));
+      var qy = Math.max(s.y - HALF, Math.min(w.y, s.y + HALF));
+      if ((qx - w.x) * (qx - w.x) + (qy - w.y) * (qy - w.y) < w.r * w.r * 0.85) {
+        if (hurt(g, s, 'saw') && g.mode === 'battle') knock(g, s, w.x, w.y);
+      }
+    }
+  }
+
+  if (g.boss) stepBoss(g, dt);
+  if (g.shards.length) stepShards(g, dt);
+  if (g.sparks.length) stepSparks(g, dt);
+  if (g.heats.length) stepHeats(g, dt);
+  if (g.guns.length) stepGuns(g, dt);
+  if (g.bullets.length) stepBullets(g, dt);
+
+  if (!g.over && !g.noEnd) {
+    if (S[0].dead) g.over = S[0].outBy ? { win: false, reason: 'boss', how: S[0].outBy } : S[0].burnedBy ? { win: false, reason: 'burn', who: S[0].burnedBy } : { win: false, reason: 'dead' };
+    else if (g.mode === 'battle' && !g.level.duel) {
+      var left = 0;
+      for (i = 1; i < S.length; i++) if (!S[i].dead) left++;
+      if (!left) g.over = { win: true, reason: 'cleared' };
+    }
+  }
+}
+
+/* ----- the gun: first square to touch it holds it, it fires three shots at the nearest square, then drops ----- */
+function nearestTo(g, s) {
+  var best = null, bd = 1e9;
+  for (var i = 0; i < g.squares.length; i++) {
+    var o = g.squares[i];
+    if (o === s || o.dead) continue;
+    var d = Math.hypot(o.x - s.x, o.y - s.y);
+    if (d < bd) { bd = d; best = o; }
+  }
+  return best;
+}
+function dropGun(g, gun) {
+  var h = gun.holder;
+  gun.x = h.x; gun.y = h.y; gun.holder = null; h.gun = null; gun.cool = GUN_COOL;
+  g.events.push({ type: 'drop', x: gun.x, y: gun.y });
+}
+function stepGuns(g, dt) {
+  for (var k = 0; k < g.guns.length; k++) {
+    var gun = g.guns[k], h = gun.holder, i, s;
+    if (h) {
+      if (h.dead) { dropGun(g, gun); continue; }
+      var t = nearestTo(g, h);
+      if (t) gun.aim = Math.atan2(t.y - h.y, t.x - h.x);
+      gun.timer -= dt;
+      if (gun.timer <= 0) {
+        if (t && !g.over) {
+          var dx = Math.cos(gun.aim), dy = Math.sin(gun.aim);
+          g.bullets.push({ x: h.x + dx * 0.9, y: h.y + dy * 0.9, vx: dx * BULLET_SPEED, vy: dy * BULLET_SPEED, owner: h, life: 2.5 });
+          g.events.push({ type: 'shot', s: h, x: h.x + dx * 1.1, y: h.y + dy * 1.1 });
+        }
+        gun.shots++;
+        if (gun.shots >= GUN_SHOTS) dropGun(g, gun); else gun.timer = GUN_GAP;
+      }
+    } else if (gun.cool > 0) {
+      gun.cool = Math.max(0, gun.cool - dt);
+    } else {
+      var best = null, bd = 1e9;
+      for (i = 0; i < g.squares.length; i++) {
+        s = g.squares[i];
+        if (s.dead || s.gun) continue;
+        if (Math.abs(s.x - gun.x) < HALF + 0.5 && Math.abs(s.y - gun.y) < HALF + 0.5) {
+          var d = Math.hypot(s.x - gun.x, s.y - gun.y);
+          if (d < bd) { bd = d; best = s; }
+        }
+      }
+      if (best) {
+        gun.holder = best; best.gun = gun; gun.shots = 0; gun.timer = GUN_FIRST;
+        g.events.push({ type: 'pickup', s: best });
+      }
+    }
+  }
+}
+function stepBullets(g, dt) {
+  for (var i = g.bullets.length - 1; i >= 0; i--) {
+    var b = g.bullets[i];
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    var cx = Math.floor(b.x), cy = Math.floor(b.y), t = tileAt(g, cx, cy), gone = b.life <= 0;
+    if (t === '#' || t === 'A' || t === 'V' || t === '<' || t === '>' || t === 'C' || t === 'T') {
+      gone = true;
+      if (t === 'C') breakCrate(g, cx, cy); else if (t === 'T') explode(g, cx, cy);
+      g.events.push({ type: 'spark', x: b.x, y: b.y });
+    } else {
+      for (var j = 0; j < g.squares.length; j++) {
+        var s = g.squares[j];
+        if (s.dead || s === b.owner) continue;
+        if (Math.abs(b.x - s.x) < HALF + 0.12 && Math.abs(b.y - s.y) < HALF + 0.12) {
+          gone = true;
+          if (hurt(g, s, 'bullet')) s.inv = BULLET_INV; else g.events.push({ type: 'spark', x: b.x, y: b.y });
+          break;
+        }
+      }
+    }
+    if (gone) g.bullets.splice(i, 1);
+  }
+}
+
+/* ----- the heat ring: first square to touch it keeps it, and it melts any other square the ring reaches ----- */
+function stepHeats(g, dt) {
+  for (var k = 0; k < g.heats.length; k++) {
+    var h = g.heats[k], s = h.holder, i, o;
+    if (s && s.dead) { h.x = s.x; h.y = s.y; s.heat = null; h.holder = null; h.t = 0; h.cool = 1; s = null; }
+    if (!s) {
+      if (h.cool > 0) { h.cool = Math.max(0, h.cool - dt); continue; }
+      var pt = h.path;
+      if (pt && pt.len > 0) {
+        pt.p += pt.sgn * pt.speed * dt;
+        if (pt.p > pt.len) { pt.p = 2 * pt.len - pt.p; pt.sgn = -1; } else if (pt.p < 0) { pt.p = -pt.p; pt.sgn = 1; }
+        h.x = pt.x1 + (pt.x2 - pt.x1) * pt.p / pt.len; h.y = pt.y1 + (pt.y2 - pt.y1) * pt.p / pt.len;
+      }
+      var best = null, bd = 1e9;
+      for (i = 0; i < g.squares.length; i++) {
+        o = g.squares[i];
+        if (o.dead || o.heat) continue;
+        if (Math.abs(o.x - h.x) < HALF + 0.5 && Math.abs(o.y - h.y) < HALF + 0.5) {
+          var d = Math.hypot(o.x - h.x, o.y - h.y);
+          if (d < bd) { bd = d; best = o; }
+        }
+      }
+      if (best) { h.holder = best; best.heat = h; h.t = 0; g.events.push({ type: 'heat', s: best }); }
+      continue;
+    }
+    h.t += dt;
+    if (g.over) continue;
+    for (i = 0; i < g.squares.length; i++) {
+      o = g.squares[i];
+      if (o === s || o.dead) continue;
+      var dx = Math.max(Math.abs(o.x - s.x) - HALF, 0), dy = Math.max(Math.abs(o.y - s.y) - HALF, 0);
+      if (dx * dx + dy * dy < HEAT_R * HEAT_R) {
+        o.hp = 0; o.dead = true; o.burnedBy = s;
+        g.events.push({ type: 'burn', s: o, by: s }); g.events.push({ type: 'death', s: o });
+      }
+    }
+    var b = g.boss;
+    if (b && b.duel && b.hp > 0 && b.inv <= 0) {
+      var bx = Math.max(Math.abs(b.x - s.x) - b.half, 0), by = Math.max(Math.abs(b.y - s.y) - b.half, 0);
+      if (bx * bx + by * by < HEAT_R * HEAT_R) burnBoss(g, b, s);
+    }
+  }
+}
+
+/* ----- the duel ----- */
+function spotMid(sp) { return sp.length >= 4 ? [(sp[0] + sp[2]) / 2, (sp[1] + sp[3]) / 2] : sp; }
+function pickByHp(arr, hp) { return arr[Math.max(0, Math.min(arr.length - 1, hp - 1))]; }
+function burnBoss(g, b, p) {
+  b.hp -= 1;
+  g.events.push({ type: 'bosshit', x: b.x, y: b.y, hp: b.hp });
+  g.sparks.length = 0; g.shards.length = 0;
+  if (b.hp <= 0) { g.over = { win: true, reason: 'bossdown' }; g.events.push({ type: 'bossdown', x: b.x, y: b.y }); return; }
+  /* he jumps to the spot furthest from the player and needs a moment before he can be burned again */
+  var best = null, bd = -1, next = null, i, m;
+  for (i = 0; i < b.spots.length; i++) {
+    m = spotMid(b.spots[i]); var d = Math.hypot(m[0] - p.x, m[1] - p.y);
+    if (d > bd) { next = best; bd = d; best = b.spots[i]; }
+  }
+  /* now and then he picks the second-furthest spot instead, so no two fights go the same way */
+  if (next) { m = spotMid(next); if (Math.hypot(m[0] - p.x, m[1] - p.y) > 9 && g.rnd() < 0.4) best = next; }
+  var nx = best[0], ny = best[1];
+  if (best.length >= 4) {
+    /* a spot can be a track he skates along: he lands on the end further from the player */
+    var far1 = Math.hypot(best[0] - p.x, best[1] - p.y) >= Math.hypot(best[2] - p.x, best[3] - p.y);
+    b.px1 = best[0]; b.py1 = best[1]; b.px2 = best[2]; b.py2 = best[3]; b.plen = Math.hypot(best[2] - best[0], best[3] - best[1]);
+    b.pp = far1 ? 0 : b.plen; b.dir = far1 ? 1 : -1;
+    if (!far1) { nx = best[2]; ny = best[3]; }
+  } else { b.px1 = b.px2 = nx; b.py1 = b.py2 = ny; b.plen = 0; b.pp = 0; }
+  g.events.push({ type: 'blink', x1: b.x, y1: b.y, x2: nx, y2: ny, how: b.type });
+  b.x = nx; b.y = ny; b.inv = DUEL_INV; b.t = 0; b.lock = false; b.tell = 0;
+  /* Frost throws soon after he reappears: reaim is how long that takes at each hp */
+  if (b.reaim) b.t = Math.max(0, pickByHp(b.gaps, b.hp) - pickByHp(b.reaim, b.hp));
+}
+function stepIceDuel(g, b, dt) {
+  var p = g.squares[0], gap = pickByHp(b.gaps, b.hp), n = pickByHp(b.fans, b.hp);
+  if (b.inv > 0) b.inv = Math.max(0, b.inv - dt);
+  b.t += dt; b.fanN = n;
+  if (!b.lock) {
+    b.aim = Math.atan2(p.y - b.y, p.x - b.x);
+    if (b.t >= gap - ICE_TELL) b.lock = true;
+  }
+  b.tell = b.lock ? Math.min(1, (b.t - (gap - ICE_TELL)) / ICE_TELL) : 0;
+  if (b.lock && b.t >= gap) {
+    for (var i = 0; i < n; i++) {
+      var a = b.aim + (i - (n - 1) / 2) * FROST_FAN;
+      g.shards.push({ x: b.x + Math.cos(a) * 0.9, y: b.y + Math.sin(a) * 0.9, vx: Math.cos(a) * ICE_SPEED, vy: Math.sin(a) * ICE_SPEED, life: 5 });
+    }
+    g.events.push({ type: 'throw', x: b.x, y: b.y });
+    b.t = 0; b.lock = false; b.tell = 0;
+  }
+}
+function stepDuel(g, b, dt) {
+  if (b.type === 'frost') { stepIceDuel(g, b, dt); return; }
+  var p = g.squares[0], k = Math.max(0, Math.min(2, b.hp - 1)), gap = DUEL_GAP[k];
+  if (b.inv > 0) b.inv = Math.max(0, b.inv - dt);
+  b.t += dt;
+  if (!b.lock) {
+    b.aim = Math.atan2(p.y - b.y, p.x - b.x);
+    if (b.t >= gap - WAVE_TELL) b.lock = true;
+  }
+  b.tell = b.lock ? Math.min(1, (b.t - (gap - WAVE_TELL)) / WAVE_TELL) : 0;
+  if (b.lock && b.t >= gap) {
+    var dx = Math.cos(b.aim), dy = Math.sin(b.aim), n = DUEL_SPARKS[k], half = (n - 1) / 2, id = ++g.waveId;
+    for (var i = 0; i < n; i++) {
+      var o = (i - half) * WAVE_STEP, back = Math.abs(i - half) * 0.16;
+      g.sparks.push({ x: b.x + dx * (1.1 - back) - dy * o, y: b.y + dy * (1.1 - back) + dx * o, vx: dx * DUEL_SPEED[k], vy: dy * DUEL_SPEED[k], w: id, life: 6 });
+    }
+    g.events.push({ type: 'wave', x: b.x, y: b.y });
+    b.t = 0; b.lock = false; b.tell = 0;
+  }
+}
+function stepSparks(g, dt) {
+  var p = g.squares[0];
+  for (var i = g.sparks.length - 1; i >= 0; i--) {
+    var q = g.sparks[i];
+    q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt;
+    var t = tileAt(g, Math.floor(q.x), Math.floor(q.y)), gone = q.life <= 0;
+    if (t === '#' || t === 'C' || t === 'T') { gone = true; g.events.push({ type: 'fizz', x: q.x, y: q.y }); }
+    else if (!g.over && !p.dead && Math.abs(q.x - p.x) < HALF + 0.2 && Math.abs(q.y - p.y) < HALF + 0.2) { gone = true; hurt(g, p, 'wave'); }
+    if (gone) g.sparks.splice(i, 1);
+  }
+}
+
+/* ----- bosses ----- */
+function inZone(b, s) { var z = b.zone; return s.x > z[0] && s.x < z[2] && s.y > z[1] && s.y < z[3]; }
+function nearInZone(g, b) {
+  var best = null, bd = 1e9;
+  for (var i = 0; i < g.squares.length; i++) {
+    var s = g.squares[i];
+    if (s.dead || !inZone(b, s)) continue;
+    var d = Math.hypot(s.x - b.x, s.y - b.y);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
+}
+function knockOut(g, s, b) {
+  s.hp = 0; s.dead = true; s.outBy = b.type;
+  g.events.push({ type: 'out', s: s, how: b.type, bx: b.x, by: b.y });
+}
+function stepBoss(g, dt) {
+  var b = g.boss, S = g.squares, i, s, t, dx, dy;
+  if (g.over) return;
+  if (b.type === 'cop') {
+    /* Sarge: runs at the nearest square in his room and busts it on contact. After a catch, or when he runs
+       out of puff, he has to stop for breath, and while he rests he is harmless. */
+    t = nearInZone(g, b);
+    if (b.phase === 'rest') {
+      b.t -= dt;
+      if (b.t <= 0) { b.phase = 'home'; b.stam = COP_CHASE; }
+    } else {
+      if (t) {
+        if (b.phase !== 'chase') { b.phase = 'chase'; b.run = 0; g.events.push({ type: 'siren', s: t }); }
+        b.stam -= dt; b.run += dt;
+        if (b.stam <= 0) { b.phase = 'rest'; b.t = COP_REST; g.events.push({ type: 'phew', x: b.x, y: b.y }); }
+      } else b.phase = 'home';
+      if (b.phase !== 'rest') {
+        var gx = t ? t.x : b.hx, gy = t ? t.y : b.hy;
+        dx = gx - b.x; dy = gy - b.y;
+        /* he needs a moment to get going, so a square right beside him can still slip away */
+        var m = Math.hypot(dx, dy), step = COP_SPEED * (t ? Math.min(1, 0.2 + b.run / COP_WIND) : 0.6) * dt;
+        if (m > 1e-6) {
+          if (m <= step) { b.x = gx; b.y = gy; } else { b.x += dx / m * step; b.y += dy / m * step; }
+          b.aim = Math.atan2(dy, dx);
+        }
+        var z = b.zone;
+        b.x = Math.max(z[0] + b.half, Math.min(z[2] - b.half, b.x));
+        b.y = Math.max(z[1] + b.half, Math.min(z[3] - b.half, b.y));
+      }
+    }
+    b.target = b.phase === 'chase' ? t : null;
+  } else {
+    /* Volt and Frost pace side to side in front of the exit */
+    if (b.speed > 0 && b.plen > 0 && !(b.duel && b.lock)) {
+      b.pp += b.dir * b.speed * dt;
+      if (b.pp > b.plen) { b.pp = b.plen; b.dir = -1; } else if (b.pp < 0) { b.pp = 0; b.dir = 1; }
+      b.x = b.px1 + (b.px2 - b.px1) * b.pp / b.plen; b.y = b.py1 + (b.py2 - b.py1) * b.pp / b.plen;
+    }
+    if (b.duel) stepDuel(g, b, dt);
+    else b.t += dt;
+    if (b.duel) { /* waves instead of the ring */ }
+    else if (b.type === 'volt') {
+      /* Volt: charges up, then shocks every square inside the ring */
+      if (b.charge === 0 && b.t >= b.idle) g.events.push({ type: 'charge', x: b.x, y: b.y });
+      b.charge = Math.max(0, (b.t - b.idle) / b.chargeT);
+      if (b.t >= b.idle + b.chargeT) {
+        b.t = 0; b.charge = 0;
+        g.events.push({ type: 'zap', x: b.x, y: b.y, r: b.R });
+        for (i = 0; i < S.length; i++) {
+          s = S[i]; if (s.dead) continue;
+          dx = Math.max(Math.abs(s.x - b.x) - HALF, 0); dy = Math.max(Math.abs(s.y - b.y) - HALF, 0);
+          if (dx * dx + dy * dy < b.R * b.R) knockOut(g, s, b);
+        }
+      }
+    } else {
+      /* Frost: takes aim at the nearest square, shows the aim, then throws three ice shards along it */
+      t = nearInZone(g, b);
+      b.target = t;
+      if (!b.lock) {
+        if (t) b.aim = Math.atan2(t.y - b.y, t.x - b.x);
+        if (b.t >= FROST_GAP - FROST_TELL) { if (t) b.lock = true; else b.t = FROST_GAP - FROST_TELL; }
+      }
+      b.tell = b.lock ? Math.min(1, (b.t - (FROST_GAP - FROST_TELL)) / FROST_TELL) : 0;
+      if (b.lock && b.t >= FROST_GAP) {
+        for (i = -1; i <= 1; i++) {
+          var a = b.aim + i * FROST_FAN;
+          g.shards.push({ x: b.x + Math.cos(a) * 0.9, y: b.y + Math.sin(a) * 0.9, vx: Math.cos(a) * SHARD_SPEED, vy: Math.sin(a) * SHARD_SPEED, life: 5 });
+        }
+        g.events.push({ type: 'throw', x: b.x, y: b.y });
+        b.t = 0; b.lock = false; b.tell = 0;
+      }
+    }
+  }
+  /* body contact: Sarge busts you once he is up to speed (not while resting or just setting off); otherwise bosses are solid and you bounce off */
+  for (i = 0; i < S.length; i++) {
+    s = S[i]; if (s.dead) continue;
+    var ox = b.half + HALF - Math.abs(s.x - b.x), oy = b.half + HALF - Math.abs(s.y - b.y);
+    if (ox <= 0 || oy <= 0) continue;
+    if (b.type === 'cop' && b.phase === 'chase' && b.run >= COP_WIND) { knockOut(g, s, b); b.phase = 'rest'; b.t = COP_REST; b.target = null; g.events.push({ type: 'phew', x: b.x, y: b.y, bust: true }); continue; }
+    var sgn;
+    if (ox < oy) { sgn = s.x >= b.x ? 1 : -1; moveAxis(g, s, 0, sgn * (ox + 0.002), true); s.ux = sgn * Math.abs(s.ux); }
+    else { sgn = s.y >= b.y ? 1 : -1; moveAxis(g, s, 1, sgn * (oy + 0.002), true); s.uy = sgn * Math.abs(s.uy); }
+    if (!s.isPlayer) rejit(g, s);
+    g.events.push({ type: 'bounce', s: s });
+  }
+}
+function stepShards(g, dt) {
+  for (var i = g.shards.length - 1; i >= 0; i--) {
+    var q = g.shards[i];
+    q.x += q.vx * dt; q.y += q.vy * dt; q.life -= dt;
+    var cx = Math.floor(q.x), cy = Math.floor(q.y), t = tileAt(g, cx, cy), gone = q.life <= 0;
+    /* shards melt at the edge of Frost's room, so the strip below it stays safe */
+    if (q.y > g.boss.zone[3] || t === '#' || t === 'A' || t === 'V' || t === '<' || t === '>' || t === 'C' || t === 'T') {
+      gone = true;
+      if (t === 'C') breakCrate(g, cx, cy);
+      g.events.push({ type: 'chip', x: q.x, y: q.y });
+    } else if (!g.over) {
+      for (var j = 0; j < g.squares.length; j++) {
+        var s = g.squares[j];
+        if (s.dead) continue;
+        if (Math.abs(q.x - s.x) < HALF + SHARD_R && Math.abs(q.y - s.y) < HALF + SHARD_R) {
+          if (!g.boss.duel) knockOut(g, s, g.boss);
+          else if (hurt(g, s, 'ice') && !s.dead) {
+            s.stun = ICE_FREEZE; s.ice = ICE_FREEZE; s.inv = ICE_FREEZE + 0.8; g.events.push({ type: 'frozen', s: s });
+            /* a hit buys a full gap before his next throw */
+            g.boss.t = Math.min(g.boss.t, 0); g.boss.lock = false; g.boss.tell = 0;
+          }
+          gone = true; break;
+        }
+      }
+    }
+    if (gone) g.shards.splice(i, 1);
+  }
+}
+
+/* dotted preview of where the player is headed */
+function predictPath(g, s, dist, out) {
+  var gh = { x: s.x, y: s.y, ux: s.ux, uy: s.uy }, step = 0.12, n = Math.round(dist / step), b = g.boss;
+  out.length = 0;
+  for (var i = 1; i <= n; i++) {
+    var dx = gh.ux * step, dy = gh.uy * step;
+    if (moveAxis(g, gh, 0, dx, true)) gh.ux = -gh.ux;
+    if (moveAxis(g, gh, 1, dy, true)) gh.uy = -gh.uy;
+    if (b && b.type !== 'cop') {
+      var ox = b.half + HALF - Math.abs(gh.x - b.x), oy = b.half + HALF - Math.abs(gh.y - b.y);
+      if (ox > 0 && oy > 0) {
+        if (ox < oy) { gh.ux = (gh.x >= b.x ? 1 : -1) * Math.abs(gh.ux); gh.x += (gh.x >= b.x ? 1 : -1) * ox; }
+        else { gh.uy = (gh.y >= b.y ? 1 : -1) * Math.abs(gh.uy); gh.y += (gh.y >= b.y ? 1 : -1) * oy; }
+      }
+    }
+    if (i % 5 === 0) out.push(gh.x, gh.y);
+  }
+  return out;
+}
+
+
+/* ---------- levels ----------
+   # wall   F finish   A V < > spikes   C crate   T TNT   + boost pad
+   d u l r one-way gates   1 = you, 2-4 = rivals
+   saws: [x1, y1, x2, y2, speed, radius, startPhase] */
+var LEVELS = [
+  {
+    name: 'First Lap', mode: 'race', aiSpeed: 8.0, pdir: [1, 0],
+    tip: 'Drag anywhere to turn. Time slows while you hold.',
+    map: [
+      '####################',
+      '#             r    #',
+      '#  1  2       r    #',
+      '#             r    #',
+      '#  3  4       r    #',
+      '#             r    #',
+      '###############    #',
+      '#    l             #',
+      '#    l             #',
+      '#    l   ##        #',
+      '#    l             #',
+      '#    l             #',
+      '#    ###############',
+      '#             r    #',
+      '#             r    #',
+      '#       ##    r    #',
+      '#             r    #',
+      '#             r    #',
+      '###############    #',
+      '#    l             #',
+      '#    l             #',
+      '#    l    ##       #',
+      '#    l             #',
+      '#    l             #',
+      '#    ###############',
+      '#            FFFFFF#',
+      '#            FFFFFF#',
+      '#            FFFFFF#',
+      '#            FFFFFF#',
+      '####################'
+    ]
+  },
+  {
+    name: 'Bumper Box', mode: 'battle', aiSpeed: 6.2, enemyHp: 2, pdir: [0, -1],
+    tip: 'Hit rivals nose-first. Whoever hits more head-on wins the clash.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#    ##    ##    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ##    ##    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Spike Alley', mode: 'race', aiSpeed: 9.0, pdir: [0, -1],
+    tip: 'Spikes stun you for a second. The two spiked gaps are shortcuts.',
+    map: [
+      '####################',
+      '##          ##FFFF##',
+      '##          ##FFFF##',
+      '##          ##FFFF##',
+      '##uuuu##    ##FFFF##',
+      '##    VV    ##    ##',
+      '##     r    #>    ##',
+      '##     r    ##    ##',
+      '##     r    ##    <#',
+      '##    AA    ##    ##',
+      '##    ##    ##    ##',
+      '##    ##    <#    ##',
+      '#>    #>    ##    ##',
+      '##    ##    #>    ##',
+      '##    <#    ##    ##',
+      '##    ##    ##    <#',
+      '##    #>    ##    ##',
+      '#>    ##    <#    ##',
+      '##    ##    ##    ##',
+      '##    ##    VV    ##',
+      '##    ##     r    ##',
+      '## 1  ##     r    ##',
+      '##    ##     r    ##',
+      '##  2 ##    AA    ##',
+      '##    <#    ##    ##',
+      '## 3  ##dddd##    ##',
+      '##    ##          ##',
+      '##  4 ##          ##',
+      '##    ##          ##',
+      '####################'
+    ]
+  },
+  {
+    name: 'Thorn Pit', mode: 'battle', aiSpeed: 6.6, enemyHp: 2, pdir: [1, 0],
+    tip: 'Thorns cost you a life. Rivals shrug them off until you shove them in.',
+    map: [
+      '##################',
+      '#      VVVV      #',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#    AA          #',
+      '#   <##>         #',
+      '#   <##>         #',
+      '#    VV          #',
+      '#>              <#',
+      '#>              <#',
+      '#>              <#',
+      '#>              <#',
+      '#          AA    #',
+      '#         <##>   #',
+      '#         <##>   #',
+      '#          VV    #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '#      AAAA      #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Crate Crash', mode: 'race', aiSpeed: 8.8, pdir: [1, 0],
+    tip: 'Crates break when hit. TNT clears the lot and stuns anyone close.',
+    map: [
+      '####################',
+      '#         r  CCr   #',
+      '# 1   3   r  CCr   #',
+      '#   2   4 r  CCr   #',
+      '#         r  CCr   #',
+      '################   #',
+      '################   #',
+      '#    l  CCC  l     #',
+      '#    l  CTC  l     #',
+      '#    l  CCC  l     #',
+      '#    l  CCC  l     #',
+      '#    #CC############',
+      '#    #CC############',
+      '#        r  CC r   #',
+      '#        r  CC r   #',
+      '#        r  CC r   #',
+      '#        r  CC r   #',
+      '################   #',
+      '################   #',
+      '#    l             #',
+      '#    l     T       #',
+      '#    l  T          #',
+      '#    l             #',
+      '#    ###############',
+      '#    ###############',
+      '#    r  CCC    FFFF#',
+      '#    r  CCC    FFFF#',
+      '#    r  CCC    FFFF#',
+      '#    r  CCC    FFFF#',
+      '####################'
+    ]
+  },
+  {
+    name: 'Powder Keg', mode: 'battle', aiSpeed: 7.0, enemyHp: 3, pdir: [0, -1],
+    tip: 'TNT hurts every square in the blast, you included.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2    CC    3  #',
+      '#       CC       #',
+      '#       CC       #',
+      '#    T  CC  T    #',
+      '#       CC       #',
+      '#       CC       #',
+      '#                #',
+      '#CCCCCC    CCCCCC#',
+      '#CCCCCC    CCCCCC#',
+      '#       TT       #',
+      '#       TT       #',
+      '#CCCCCC    CCCCCC#',
+      '#CCCCCC    CCCCCC#',
+      '#                #',
+      '#       CC       #',
+      '#       CC       #',
+      '#    T  CC  T    #',
+      '#       CC       #',
+      '#       CC       #',
+      '#  1    CC    4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Saw Mill', mode: 'race', aiSpeed: 9.0, pdir: [1, 0],
+    tip: 'Arrow gates open one way only. Time your run past the saws.',
+    saws: [
+      [10, 23, 10, 27.8, 4.2, 0.85, 0],
+      [7, 18, 17, 18, 5.5, 0.85, 0.5],
+      [8, 9, 8, 13, 4.2, 0.85, 0],
+      [12, 13, 12, 9, 4.2, 0.85, 0],
+      [6.5, 4, 17, 4, 6, 0.85, 0]
+    ],
+    map: [
+      '####################',
+      '#FFFF              #',
+      '#FFFF              #',
+      '#FFFF              #',
+      '#FFFF              #',
+      '#FFFF              #',
+      '#FFFF              #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '###############uuuu#',
+      '#             r    #',
+      '# 1   3       r    #',
+      '#             r    #',
+      '#   2   4     r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Buzz Cut', mode: 'battle', aiSpeed: 7.2, enemyHp: 3, pdir: [0, -1],
+    tip: 'Saws cut you on touch. Shove a rival first and they cut it too.',
+    saws: [
+      [2.5, 8.5, 15.5, 8.5, 4.2, 0.9, 0],
+      [15.5, 15.5, 2.5, 15.5, 4.2, 0.9, 0],
+      [9, 2, 9, 9.5, 3.4, 0.9, 0.5]
+    ],
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Fast Lane', mode: 'race', aiSpeed: 7.2, pdir: [1, 0],
+    tip: 'Yellow pads give a burst of speed. Spiral in to the middle.',
+    map: [
+      '####################',
+      '#              r   #',
+      '# 1 2 3 4  ++  r   #',
+      '#              r   #',
+      '################   #',
+      '#          r   #   #',
+      '#     ++   r   #   #',
+      '#          r   #   #',
+      '#uuu########   #   #',
+      '#   #   r  #   # + #',
+      '#   #   r  #   # + #',
+      '#   #   r  #   #   #',
+      '#   #uuu#  #   #   #',
+      '#   #   #  #   #   #',
+      '# + #   #FF# + #   #',
+      '# + #   #FF# + #   #',
+      '#   #   #FF#   #   #',
+      '#   #   #FF#   #   #',
+      '#   # + #FF#   # + #',
+      '#   # + #FF#   # + #',
+      '#   #   #FF#   #   #',
+      '#   #   ####ddd#   #',
+      '#   #   l      #   #',
+      '#   #   l  ++  #   #',
+      '#   #   l      #   #',
+      '#   ############ddd#',
+      '#   l              #',
+      '#   l     ++       #',
+      '#   l              #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Pinball', mode: 'battle', aiSpeed: 7.8, enemyHp: 3, pdir: [0, -1],
+    tip: 'Rivals are quicker here. Use the pads to catch them.',
+    map: [
+      '##################',
+      '#    VV    VV    #',
+      '#                #',
+      '#  2          3  #',
+      '#      #  #      #',
+      '#                #',
+      '#   #   ++   #   #',
+      '#       ++       #',
+      '#>     #  #     <#',
+      '#>              <#',
+      '#                #',
+      '#  ++   ##   ++  #',
+      '#  ++   ##   ++  #',
+      '#                #',
+      '#>              <#',
+      '#>     #  #     <#',
+      '#       ++       #',
+      '#   #   ++   #   #',
+      '#                #',
+      '#      #  #      #',
+      '#  1          4  #',
+      '#                #',
+      '#    AA    AA    #',
+      '##################'
+    ]
+  },
+  {
+    name: 'The Gauntlet', mode: 'race', aiSpeed: 10.0, pdir: [-1, 0],
+    tip: 'Everything at once. Keep to the middle past the teeth.',
+    saws: [
+      [6, 1.9, 6, 6.1, 4.5, 0.85, 0],
+      [11, 6.1, 11, 1.9, 4.5, 0.85, 0]
+    ],
+    map: [
+      '####################',
+      '#              FFFF#',
+      '#              FFFF#',
+      '#              FFFF#',
+      '#              FFFF#',
+      '#              FFFF#',
+      '#              FFFF#',
+      '#uuu################',
+      '#   l  #VV#  #VV   #',
+      '#   l  #  #  #     #',
+      '#   l     l        #',
+      '#   l     l        #',
+      '#   l     l        #',
+      '#   l     l        #',
+      '################uuu#',
+      '#     r  CC    r   #',
+      '#     r  CC    r   #',
+      '#     r  CCT   r   #',
+      '#     r  CC    r   #',
+      '#     r  CC    r   #',
+      '#uuu################',
+      '#   l              #',
+      '#   l              #',
+      '#   l     4   2    #',
+      '#   l +            #',
+      '#   l       3   1  #',
+      '#   l              #',
+      '#   l              #',
+      '#   l              #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Last Square', mode: 'battle', aiSpeed: 8.0, enemyHp: 3, pdir: [0, -1],
+    tip: 'Spikes, a saw and TNT. Be the last square standing.',
+    saws: [
+      [3, 12, 15, 12, 4.4, 0.9, 0]
+    ],
+    map: [
+      '##################',
+      '#                #',
+      '#  2    AA    3  #',
+      '#       ##       #',
+      '#                #',
+      '#    T      T    #',
+      '#                #',
+      '#>    CC  CC    <#',
+      '#>    CC  CC    <#',
+      '#                #',
+      '#   ##      ##   #',
+      '#                #',
+      '#                #',
+      '#   ##      ##   #',
+      '#                #',
+      '#>    CC  CC    <#',
+      '#>    CC  CC    <#',
+      '#                #',
+      '#    T      T    #',
+      '#                #',
+      '#       ##       #',
+      '#  1    VV    4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Quick Draw', mode: 'battle', gun: true, aiSpeed: 6.8, enemyHp: 3, pdir: [0, -1],
+    tip: 'Reach the gun first. It fires three shots at the nearest square, then drops. Only bullets hurt here.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ##    ##    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#        G       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ##    ##    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Crossfire', mode: 'battle', gun: true, aiSpeed: 7.2, enemyHp: 3, pdir: [0, -1],
+    tip: 'Walls stop bullets and crates do not last. Break the line of fire when a rival is armed.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#     ######     #',
+      '#                #',
+      '#                #',
+      '#   #        #   #',
+      '#   #   CC   #   #',
+      '#   #   CC   #   #',
+      '#                #',
+      '#        G       #',
+      '#                #',
+      '#   #   CC   #   #',
+      '#   #   CC   #   #',
+      '#   #        #   #',
+      '#                #',
+      '#                #',
+      '#     ######     #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Last Round', mode: 'battle', gun: true, aiSpeed: 7.2, enemyHp: 3, pdir: [0, -1],
+    tip: 'Two guns this time. Crates give cover until they are shot away.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#       G        #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#                #',
+      '#       CC       #',
+      '#       CC       #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#        G       #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Heat Wave', mode: 'battle', heat: true, aiSpeed: 6.6, enemyHp: 3, pdir: [0, -1],
+    tip: 'Touch the flame first. Its ring melts every rival it reaches, and you keep it all round.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#  ##    H   ##  #',
+      '#  ##        ##  #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Meltdown', mode: 'battle', heat: true, aiSpeed: 7.0, enemyHp: 3, pdir: [0, -1],
+    tip: 'The flame is inside the box. Steer through a gap before a rival bounces in.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ###  ###    #',
+      '#    #      #    #',
+      '#    #      #    #',
+      '#                #',
+      '#        H       #',
+      '#                #',
+      '#    #      #    #',
+      '#    #      #    #',
+      '#    ###  ###    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'High Voltage', mode: 'race', aiSpeed: 7.0, pdir: [1, 0],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 5.3, patrol: [9.4, 10.6], speed: 0.8, zone: [5, 3, 15, 10] },
+    tip: 'Volt shocks every square inside its ring. Wait below for the flash, then dash up to the red zone.',
+    map: [
+      '####################',
+      '#####FFFFFFFFFF#####',
+      '#####FFFFFFFFFF#####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '# 1   3       r    #',
+      '#             r    #',
+      '#   2   4     r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Deep Freeze', mode: 'race', aiSpeed: 7.0, pdir: [-1, 0],
+    boss: { type: 'frost', name: 'Frost', x: 10, y: 4.6, patrol: [7.6, 12.4], speed: 1.4, zone: [1, 3, 19, 10] },
+    tip: 'Frost throws three ice shards at the nearest square in its room. When the red lines point at you, move off them. Blocks stop the ice.',
+    map: [
+      '####################',
+      '######FFFFFFFF######',
+      '######FFFFFFFF######',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#  ##          ##  #',
+      '#  ##          ##  #',
+      '#        ##        #',
+      '#        ##        #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '#     ##      r    #',
+      '#     ##      r    #',
+      '#             r    #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l             #',
+      '#    l       3   1 #',
+      '#    l             #',
+      '#    l     4   2   #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Road Block', mode: 'race', aiSpeed: 7.0, pdir: [1, 0],
+    boss: { type: 'cop', name: 'Sarge', x: 10, y: 4.6, zone: [1, 3, 19, 10] },
+    tip: 'Sarge chases the nearest square in his room, then has to stop for breath. Go past him while he rests.',
+    map: [
+      '####################',
+      '######FFFFFFFF######',
+      '######FFFFFFFF######',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l    ++       #',
+      '#    l    ++       #',
+      '#    l     ##      #',
+      '#    l     ##      #',
+      '###############uuuu#',
+      '#             r    #',
+      '#      ##     r    #',
+      '# 1    ##     r    #',
+      '#             r    #',
+      '#   2         r    #',
+      '#         ++  r    #',
+      '# 3       ++  r    #',
+      '#   4         r    #',
+      '#             r    #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Flash Point', mode: 'battle', heat: true, aiSpeed: 6.4, enemyHp: 3, pdir: [0, -1],
+    tip: 'The flame sits in a nook at the far end. Ride the yellow pads straight up the middle to get there first.',
+    map: [
+      '##################',
+      '#      #   #     #',
+      '#      # H #     #',
+      '#      #   #     #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#                #',
+      '#        +       #',
+      '#        +       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#        +       #',
+      '#        +       #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#                #',
+      '#        +       #',
+      '# 2      1     3 #',
+      '#   4            #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Fire Break', mode: 'battle', heat: true, aiSpeed: 6.8, enemyHp: 3, pdir: [0, -1],
+    tip: 'The flame is boxed in by crates. Hit the crates to smash a hole, then go back in through it.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2          3  #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    CCCCCCCC    #',
+      '#    C      C    #',
+      '#    C      C    #',
+      '#    C   H  C    #',
+      '#    C      C    #',
+      '#    C      C    #',
+      '#    CCCCCCCC    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#  1          4  #',
+      '#                #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Bonfire', mode: 'battle', heat: true, aiSpeed: 6.6, enemyHp: 3, pdir: [0, -1],
+    tip: 'Six rivals this time. Grab the flame just ahead of you, then chase all six down.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2    3     4  #',
+      '#                #',
+      '#    7           #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#        H       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#   ##      ##   #',
+      '#   ##      ##   #',
+      '#        1       #',
+      '#                #',
+      '#                #',
+      '# 5            6 #',
+      '#                #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Catch Fire', mode: 'battle', heat: true, aiSpeed: 6.4, enemyHp: 3, pdir: [0, -1],
+    flames: [[3, 16.5, 15, 16.5, 4.5]],
+    tip: 'This flame slides from side to side. Steer to where it is going, not where it is.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2     4    3  #',
+      '#                #',
+      '#                #',
+      '#      ####      #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#      ####      #',
+      '#                #',
+      '#                #',
+      '#  1             #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Wildfire', mode: 'battle', heat: true, aiSpeed: 7.0, enemyHp: 3, pdir: [0, -1],
+    tip: 'Six quick rivals and a walled-in flame. The wide gap at the bottom is yours. Do not miss it.',
+    map: [
+      '##################',
+      '#                #',
+      '#  2    3     4  #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ########    #',
+      '#    #      #    #',
+      '#    #      #    #',
+      '#    #      #    #',
+      '#                #',
+      '#        H       #',
+      '#    #      #    #',
+      '#    #      #    #',
+      '#    #      #    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '# 5            6 #',
+      '#                #',
+      '#        1       #',
+      '#             7  #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Live Wire', mode: 'race', aiSpeed: 7.0, pdir: [-1, 0],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 6, path: [5, 6, 15, 6], speed: 3.0, r: 3.6, idle: 1.6, charge: 0.9, zone: [1, 3, 19, 10] },
+    tip: 'Volt paces from side to side and takes a smaller ring with him. Go up the side he is walking away from.',
+    map: [
+      '####################',
+      '#FFFFFFFFFFFFFFFFFF#',
+      '#FFFFFFFFFFFFFFFFFF#',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '#    ##       r    #',
+      '#    ##       r    #',
+      '#             r    #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l             #',
+      '#    l       3   1 #',
+      '#    l             #',
+      '#    l     4   2   #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Short Circuit', mode: 'race', aiSpeed: 7.0, pdir: [1, 0],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 4.5, path: [9.4, 4.5, 10.6, 4.5], speed: 0.8, r: 3.4, idle: 1.2, charge: 0.8, zone: [6, 3, 14, 8] },
+    tip: 'A short dash, but Volt flashes twice as often here. Leave the moment the flash is over.',
+    map: [
+      '####################',
+      '######FFFFFFFF######',
+      '######FFFFFFFF######',
+      '######        ######',
+      '######        ######',
+      '######        ######',
+      '######        ######',
+      '######        ######',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l             #',
+      '#    l      ##     #',
+      '#    l      ##     #',
+      '#    l             #',
+      '#    l             #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '# 1   3       r    #',
+      '#             r    #',
+      '#   2   4     r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Barricade', mode: 'race', aiSpeed: 7.0, pdir: [-1, 0],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 5.3, path: [9.4, 5.3, 10.6, 5.3], speed: 0.8, zone: [5, 3, 15, 10] },
+    tip: 'Crates block the way under the ring. Smash a hole, back off, and go through after the next flash.',
+    map: [
+      '####################',
+      '#####FFFFFFFFFF#####',
+      '#####FFFFFFFFFF#####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####          #####',
+      '#####CCCCCCCCCC#####',
+      '#####CCCCCCCCCC#####',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#uuuu###############',
+      '#    l             #',
+      '#    l             #',
+      '#    l       3   1 #',
+      '#    l             #',
+      '#    l     4   2   #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '#    l             #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Shock Corridor', mode: 'race', aiSpeed: 7.0, pdir: [1, 0],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 9, path: [10, 5.2, 10, 14.1], speed: 2.4, r: 3.8, idle: 2.2, charge: 1.0, zone: [6, 3, 14, 18] },
+    tip: 'Volt walks up and down the long hall. Duck into a side room to let the ring go by, then run on.',
+    map: [
+      '####################',
+      '######FFFFFFFF######',
+      '######FFFFFFFF######',
+      '######        ######',
+      '######        ######',
+      '######        ######',
+      '######        ######',
+      '######             #',
+      '######             #',
+      '######             #',
+      '######        ######',
+      '######        ######',
+      '#             ######',
+      '#             ######',
+      '#             ######',
+      '######        ######',
+      '######        ######',
+      '######        ######',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '###############uuuu#',
+      '#             r    #',
+      '# 1   3       r    #',
+      '#             r    #',
+      '#   2   4     r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Overload', mode: 'race', aiSpeed: 7.0, pdir: [0, -1],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 8.5, path: [9.4, 8.5, 10.6, 8.5], speed: 0.8, r: 6.4, idle: 1.4, charge: 1.0, zone: [4, 3, 16, 15] },
+    tip: 'The biggest ring yet. The yellow pads at the bottom give you the speed to cross it in one go.',
+    map: [
+      '####################',
+      '####FFFFFFFFFFFF####',
+      '####FFFFFFFFFFFF####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####            ####',
+      '####++++++++++++####',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '###############uuuu#',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '#     2     3 r 1  #',
+      '#             r    #',
+      '#   4         r    #',
+      '#             r    #',
+      '#             r    #',
+      '#             r    #',
+      '####################'
+    ]
+  },
+  {
+    name: 'Showdown', mode: 'battle', duel: true, aiSpeed: 0, pdir: [0, -1],
+    boss: { type: 'volt', name: 'Volt', x: 9, y: 3.5, duel: true, hp: 3, zone: [1, 1, 17, 23],
+      spots: [[9, 3.5], [3.5, 3.5], [14.5, 3.5], [9, 11.5], [3.5, 20], [14.5, 20]] },
+    tip: 'You start with the heat ring. Get it onto Volt three times. Steer out of the red strip before his sparks arrive.',
+    map: [
+      '##################',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ##    ##    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#    ##    ##    #',
+      '#    ##    ##    #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#        1       #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Cold Snap', mode: 'battle', duel: true, aiSpeed: 0, pdir: [0, -1],
+    boss: { type: 'frost', name: 'Frost', x: 3.5, y: 3.5, duel: true, hp: 3, zone: [1, 1, 17, 23],
+      gaps: [2.4, 2.6, 2.8], reaim: [1.2, 1.3, 9], fans: [5, 3, 3],
+      spots: [[3.5, 3.5], [14.5, 3.5], [3.5, 11.5], [14.5, 11.5], [3.5, 20], [14.5, 20]] },
+    tip: 'You start with the heat ring. Get it onto Frost three times. His ice freezes you for a moment, so stay off the red lines.',
+    map: [
+      '##################',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#       ##       #',
+      '#       ##       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#             1  #',
+      '#                #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Ice Rink', mode: 'battle', duel: true, aiSpeed: 0, pdir: [1, 0],
+    boss: { type: 'frost', name: 'Frost', x: 9, y: 3.5, duel: true, hp: 4, zone: [1, 1, 17, 23],
+      path: [4, 3.5, 14, 3.5], speed: 2.6, gaps: [2.2, 2.4, 2.6, 2.8], reaim: [1.1, 1.2, 2.0, 9], fans: [5, 5, 3, 3],
+      spots: [[4, 3.5, 14, 3.5], [4, 20.5, 14, 20.5], [3.5, 7, 3.5, 17], [14.5, 7, 14.5, 17]] },
+    tip: 'Frost skates along the walls and stops when he is about to throw. Four burns this time. The crates block his ice until it smashes them.',
+    map: [
+      '##################',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#      CCCC      #',
+      '#                #',
+      '#                #',
+      '#      C  C      #',
+      '#      C  C      #',
+      '#      C  C      #',
+      '#                #',
+      '#                #',
+      '#      CCCC      #',
+      '#                #',
+      '#        1       #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '#                #',
+      '##################'
+    ]
+  },
+  {
+    name: 'Megavolt', mode: 'race', aiSpeed: 5.6, pdir: [1, 0],
+    boss: { type: 'volt', name: 'Volt', x: 10, y: 9.5, path: [9.4, 9.5, 10.6, 9.5], speed: 0.8, r: 9.3, idle: 2.5, charge: 1.3, first: [1.3, 2.3], zone: [1, 3, 19, 18] },
+    tip: 'Volt has grown a ring that fills the whole room. Wait in your corner for the flash, then dash straight up over the yellow pads.',
+    map: [
+      '####################',
+      '#FFFFFFFFFFFFFFFFFF#',
+      '#FFFFFFFFFFFFFFFFFF#',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#                  #',
+      '#++++++++++++++++++#',
+      '#             #    #',
+      '#  2    3   4 #    #',
+      '#             #  1 #',
+      '##uuu##########    #',
+      '#             #    #',
+      '#             #    #',
+      '#             ######',
+      '#                  #',
+      '#    5   6   7     #',
+      '#                  #',
+      '####################'
+    ]
+  }
+];
+
+/* ---------- interface, rendering, input ---------- */
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var INK = '#12301a', GRASS = '#7ef07e', PAPER = '#fffbe3', ORCHID = '#d86af0', MIDFLOOR = '#ecc6f6';
+  var FINISH = '#e33f6c', SUN = '#ffd43a', STEEL = '#aab3bc';
+  var PALETTE = [
+    { id: 'red', name: 'Red', fill: '#e8372f', light: '#f79a94' },
+    { id: 'green', name: 'Green', fill: '#2fc33a', light: '#93ec99' },
+    { id: 'blue', name: 'Blue', fill: '#2b50e6', light: '#8fa3f8' },
+    { id: 'yellow', name: 'Yellow', fill: '#f7d21c', light: '#fcec94' },
+    { id: 'orange', name: 'Orange', fill: '#ff8a1e', light: '#ffc892' },
+    { id: 'teal', name: 'Teal', fill: '#12b8b0', light: '#8fe9e4' },
+    { id: 'rainbow', name: 'Rainbow', fill: '#e8372f', light: '#f79a94', rainbow: true,
+      css: 'linear-gradient(180deg,#e8372f 0 16.7%,#ff8a1e 0 33.3%,#f7d21c 0 50%,#2fc33a 0 66.7%,#2b50e6 0 83.3%,#8e3fd6 0)' },
+    { id: 'ninja', name: 'Ninja', skin: 'ninja', fill: '#232a3d', light: '#f79a94' },
+    { id: 'robot', name: 'Robot', skin: 'robot', fill: '#b9c2cc', light: '#9be9ff' },
+    { id: 'dragon', name: 'Dragon', skin: 'dragon', fill: '#8e3fd6', light: '#ffb347' },
+    { id: 'tiger', name: 'Tiger', skin: 'tiger', fill: '#ff8a1e', light: '#ffc892' }
+  ];
+  var RAINBOW = ['#e8372f', '#ff8a1e', '#f7d21c', '#2fc33a', '#2b50e6', '#8e3fd6'];
+  var KIND = { race: 'Race', battle: 'Battle', gun: 'Gunfight', heat: 'Heat round', boss: 'Boss race', duel: 'Boss duel' };
+  var CHIP = { race: 'Race', battle: 'Battle', gun: 'Guns', heat: 'Heat', boss: 'Boss', duel: 'Duel' };
+  var BOSSC = { volt: '#ffd43a', frost: '#a8e0ff', cop: '#2f4a9e' };
+  var OUTWORD = { volt: 'ZAPPED', frost: 'FROZEN', cop: 'BUSTED' }, OUTCOL = { volt: '#ffd43a', frost: '#bfe9ff', cop: '#9fb6ff' };
+  function kindOf(L) { return L.duel ? 'duel' : L.boss ? 'boss' : L.gun ? 'gun' : L.heat ? 'heat' : L.mode; }
+  function rivalsIn(L) { return L.map.join('').replace(/[^2-7]/g, '').length; }
+  function countWord(n) { return ['no', 'one', 'two', 'three', 'four', 'five', 'six'][n] || String(n); }
+  var STEP = 1 / 240, KEY = 'square-scramble-v1';
+
+  /* ----- saved bits: colour, best times, sound ----- */
+  var store = { color: 'red', best: {}, muted: false, lives: 3 };
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) {
+      var o = JSON.parse(raw);
+      if (o && typeof o === 'object') {
+        if (PALETTE.some(function (c) { return c.id === o.color; })) store.color = o.color;
+        if (o.best && typeof o.best === 'object') store.best = o.best;
+        store.muted = !!o.muted;
+        if (o.lives >= 1 && o.lives <= 50) store.lives = Math.round(o.lives);
+      }
+    }
+  } catch (e) { /* storage unavailable: play without saving */ }
+  function persist() { try { localStorage.setItem(KEY, JSON.stringify(store)); } catch (e) { /* ignore */ } }
+  function colorById(id) { for (var i = 0; i < PALETTE.length; i++) if (PALETTE[i].id === id) return PALETTE[i]; return PALETTE[0]; }
+  /* rival-only colours, for rounds with more than three rivals */
+  var EXTRA = [{ id: 'purple', name: 'Purple', fill: '#8e3fd6', light: '#c9a3f0' }, { id: 'pink', name: 'Pink', fill: '#f06aa8', light: '#f9bdd8' }];
+  function roster(n) {
+    var drop = { orange: 'yellow', teal: 'green', rainbow: 'yellow', dragon: 'purple', tiger: 'orange' }[store.color];
+    var rest = ['red', 'green', 'blue', 'yellow'].filter(function (c) { return c !== store.color && c !== drop; }).slice(0, 3);
+    var team = [store.color].concat(rest).map(colorById);
+    var more = EXTRA.concat(['orange', 'teal', 'yellow', 'green', 'red', 'blue'].map(colorById)).filter(function (c) { return c.id !== store.color && c.id !== drop && team.indexOf(c) < 0; });
+    return team.concat(more).slice(0, Math.max(4, n || 4));
+  }
+
+  /* ----- state ----- */
+  var cv = $('cv'), ctx = cv.getContext('2d');
+  var dpr = 1, view = { c: 16, ox: 0, oy: 0 }, base = null;
+  var g = null, lvl = 0, screen = 'menu', paused = false;
+  var ts = 1, acc = 0, lastT = 0, overT = 0, overSeen = false, resultShown = false;
+  var ptr = { id: null, active: false, ax: 0, ay: 0, x: 0, y: 0 };
+  var keys = {}, keySlow = false;
+  var parts = [], pops = [], rings = [], shake = 0, pathBuf = [], off = { x: 0, y: 0 };
+  var ghosts = [], bolts = [], flashes = [];
+  var hudCache = { time: '', lives: -1, mode: '' };
+  var mq = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  var coarse = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+  function calm() { return mq && mq.matches; }
+  /* a square's colour right now: rainbow squares cycle through the spectrum */
+  function tint(col, now, light) {
+    if (!col.rainbow) return light ? col.light : col.fill;
+    var h = calm() ? 290 : Math.floor(now / 5) % 360;
+    return 'hsl(' + h + (light ? ',95%,76%)' : ',88%,55%)');
+  }
+  function hue(col) { return col.rainbow ? 'rainbow' : col.fill; }
+
+  /* ----- sound: tiny synth, starts on first touch ----- */
+  var AC = null, lastBounce = 0;
+  function ac() {
+    if (store.muted) return null;
+    if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
+    if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (e) { /* ignore */ } }
+    return AC;
+  }
+  function tone(f0, f1, dur, type, vol, delay) {
+    var a = ac(); if (!a) return;
+    var t = a.currentTime + (delay || 0), o = a.createOscillator(), gn = a.createGain();
+    o.type = type || 'square';
+    o.frequency.setValueAtTime(f0, t);
+    if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    gn.gain.setValueAtTime(vol || 0.05, t);
+    gn.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(gn); gn.connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+  }
+  function noise(dur, vol, cut) {
+    var a = ac(); if (!a) return;
+    var n = Math.floor(a.sampleRate * dur), buf = a.createBuffer(1, n, a.sampleRate), d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+    var src = a.createBufferSource(), gn = a.createGain(), lp = a.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = cut || 1200; gn.gain.value = vol || 0.12;
+    src.buffer = buf; src.connect(lp); lp.connect(gn); gn.connect(a.destination); src.start();
+  }
+
+  /* ----- menu ----- */
+  function buildMenu() {
+    var box = $('colors'), skins = $('skins'); box.textContent = ''; skins.textContent = '';
+    PALETTE.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'swatch'; b.id = 'color-' + c.id;
+      b.setAttribute('role', 'radio'); b.setAttribute('aria-label', c.name);
+      b.innerHTML = '<canvas width="144" height="144" aria-hidden="true"></canvas>' + (c.skin ? '<span class="nm"></span>' : '');
+      if (c.skin) b.querySelector('.nm').textContent = c.name;
+      b.addEventListener('click', function () { store.color = c.id; persist(); refreshMenu(); tone(520, 780, 0.08, 'square', 0.04); });
+      (c.skin ? skins : box).appendChild(b);
+    });
+    var lv = $('levels'); lv.textContent = '';
+    LEVELS.forEach(function (L, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'lv'; b.id = 'level-' + (i + 1);
+      b.innerHTML = '<canvas width="80" height="120" aria-hidden="true"></canvas>' +
+        '<span class="row"><span class="n">' + (i + 1) + '</span><span class="chip ' + kindOf(L) + '">' + CHIP[kindOf(L)] + '</span></span>' +
+        '<span class="name"></span><span class="best"></span>';
+      b.querySelector('.name').textContent = L.name;
+      b.addEventListener('click', function () { ac(); startLevel(i); });
+      lv.appendChild(b);
+    });
+    $('playBtn').addEventListener('click', function () { ac(); startLevel(nextLevel()); });
+    $('soundBtn').addEventListener('click', function () { toggleSound(); refreshMenu(); });
+    function setLives(n) {
+      n = Math.max(1, Math.min(50, Math.round(n) || 3));
+      store.lives = n; persist();
+      $('livesRange').value = String(n); $('livesOut').textContent = String(n);
+    }
+    $('livesRange').addEventListener('input', function () { setLives(+this.value); });
+    $('livesDown').addEventListener('click', function () { setLives(store.lives - 1); tone(420, 0, 0.05, 'square', 0.04); });
+    $('livesUp').addEventListener('click', function () { setLives(store.lives + 1); tone(560, 0, 0.05, 'square', 0.04); });
+    setLives(store.lives);
+    $('pauseBtn').addEventListener('click', pause);
+  }
+  function nextLevel() {
+    for (var i = 0; i < LEVELS.length; i++) if (!(store.best[i] > 0)) return i;
+    return 0;
+  }
+  function refreshMenu() {
+    var me = colorById(store.color), team = roster();
+    PALETTE.forEach(function (c) {
+      var b = $('color-' + c.id), cx = b.querySelector('canvas').getContext('2d'), k = 144 * (c.skin ? 0.58 : 0.92) / SQ;
+      b.setAttribute('aria-checked', c.id === store.color ? 'true' : 'false');
+      cx.setTransform(1, 0, 0, 1, 0, 0); cx.clearRect(0, 0, 144, 144);
+      cx.setTransform(k, 0, 0, k, c.skin === 'ninja' ? 64 : 72, c.skin ? 84 : 72);
+      drawFace(cx, c, 0, 0, 0, { ux: 0.6, uy: 0.4 });
+    });
+    var rc = $('racers').children;
+    for (var k = 0; k < rc.length; k++) rc[k].style.setProperty('--c', team[k].css || team[k].fill);
+    LEVELS.forEach(function (L, i) {
+      var b = $('level-' + (i + 1)), best = store.best[i];
+      b.classList.toggle('done', best > 0);
+      b.querySelector('.best').textContent = best > 0 ? 'Best ' + best.toFixed(1) + ' s' : 'Not cleared';
+      drawThumb(b.querySelector('canvas'), L, me);
+    });
+    var n = nextLevel(), all = LEVELS.every(function (L, i) { return store.best[i] > 0; });
+    $('playBtn').textContent = all ? 'Play level 1 again' : 'Play level ' + (n + 1);
+    $('soundBtn').textContent = store.muted ? 'Sound off' : 'Sound on';
+  }
+  function drawThumb(el, L, me) {
+    var c = el.getContext('2d'), m = L.map, H = m.length, W = m[0].length, u = 4;
+    var ox = Math.floor((20 - W) / 2) * u, oy = Math.floor((30 - H) / 2) * u;
+    c.fillStyle = GRASS; c.fillRect(0, 0, 80, 120);
+    var gr = c.createLinearGradient(0, oy, 0, oy + H * u);
+    gr.addColorStop(0, ORCHID); gr.addColorStop(0.55, MIDFLOOR); gr.addColorStop(1, PAPER);
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var ch = m[y][x]; if (ch === '#') continue;
+      c.fillStyle = gr; c.fillRect(ox + x * u, oy + y * u, u, u);
+      var col = ch === 'F' ? FINISH : 'AV<>'.indexOf(ch) >= 0 ? '#707a84' : ch === 'C' ? '#c99f58' : ch === 'T' ? '#d8322c' :
+        ch === '+' ? '#f0b400' : ch === 'G' ? '#7a4a1c' : ch === 'H' ? '#ff5a1a' : 'durl'.indexOf(ch) >= 0 ? 'rgba(20,150,170,.45)' : ch === '1' ? me.fill : (ch >= '2' && ch <= '7') ? INK : null;
+      if (col) { c.fillStyle = col; c.fillRect(ox + x * u, oy + y * u, u, u); }
+    }
+    (L.saws || []).forEach(function (w) { c.fillStyle = '#707a84'; c.fillRect(ox + w[0] * u - 3, oy + w[1] * u - 3, 6, 6); });
+    (L.flames || []).forEach(function (f) { c.fillStyle = '#ff5a1a'; c.fillRect(Math.round(ox + f[0] * u) - 2, Math.round(oy + f[1] * u) - 2, 4, 4); });
+    if (L.boss) {
+      var bx = Math.round(ox + (L.boss.x - 1.3) * u), by = Math.round(oy + (L.boss.y - 1.3) * u), bs = Math.round(2.6 * u);
+      c.fillStyle = INK; c.fillRect(bx - 1, by - 1, bs + 2, bs + 2);
+      c.fillStyle = BOSSC[L.boss.type]; c.fillRect(bx, by, bs, bs);
+    }
+  }
+  function showMenu() {
+    screen = 'menu'; g = null; paused = false; ptr.id = null; ptr.active = false; keys = {}; keySlow = false;
+    cv.hidden = true; $('app').hidden = true; $('intro').hidden = true; $('overlay').hidden = true;
+    $('menu').hidden = false;
+    refreshMenu();
+  }
+  function toggleSound() { store.muted = !store.muted; persist(); if (!store.muted) tone(660, 880, 0.08, 'square', 0.04); }
+
+  /* ----- starting a level ----- */
+  function startLevel(i) {
+    lvl = i;
+    var L = LEVELS[i], team;
+    g = makeGame(L, { seed: ((Date.now() % 1000003) + i * 7919) | 0, playerHp: store.lives });
+    team = roster(g.squares.length);
+    g.squares.forEach(function (s, k) { s.col = team[k]; });
+    screen = 'game'; paused = false; ts = 1; acc = 0; overT = 0; overSeen = false; resultShown = false;
+    parts.length = 0; pops.length = 0; rings.length = 0; shake = 0;
+    ghosts.length = 0; bolts.length = 0; flashes.length = 0;
+    ptr.id = null; ptr.active = false; keys = {}; keySlow = false;
+    hudCache.time = ''; hudCache.lives = -1; hudCache.mode = '';
+    $('menu').hidden = true; $('overlay').hidden = true; cv.hidden = false; $('app').hidden = false;
+    $('hudNum').textContent = String(i + 1);
+    $('hudName').textContent = L.name;
+    $('hudLives').hidden = L.mode !== 'battle';
+    $('hudLives').style.setProperty('--c', team[0].css || team[0].fill);
+    $('introNum').textContent = 'Level ' + (i + 1) + ' of ' + LEVELS.length;
+    $('introChip').className = 'chip ' + kindOf(L);
+    $('introChip').textContent = KIND[kindOf(L)];
+    $('introName').textContent = L.name;
+    var rw = countWord(rivalsIn(L));
+    $('introGoal').textContent = L.duel ? 'Just you and ' + L.boss.name + '. Get your heat ring onto him ' + countWord(L.boss.hp) + ' times before his ' + (L.boss.type === 'frost' ? 'ice takes' : 'sparks take') + ' all your lives.' :
+      L.boss ? 'Get past ' + L.boss.name + ' and be first into the red zone. If ' + L.boss.name + ' gets you, you are out.' :
+      L.mode === 'race' ? 'Be the first square into the red zone.' :
+      L.gun ? 'Grab the gun and knock out all ' + rw + ' rivals. Only bullets hurt here.' :
+      L.heat ? 'Touch the flame first, then melt all ' + rw + ' rivals with its ring.' : 'Knock out all ' + rw + ' rivals. Last square standing wins.';
+    $('introTip').textContent = L.tip;
+    $('introHint').textContent = coarse ? 'Touch and drag to start' : 'Click and drag, or use the arrow keys';
+    $('intro').hidden = false;
+    layout();
+  }
+  function begin() {
+    if (!g || g.state !== 'ready') return;
+    g.state = 'playing'; $('intro').hidden = true;
+    tone(440, 880, 0.12, 'square', 0.05);
+  }
+
+  /* ----- layout and the static level picture ----- */
+  function layout() {
+    if (cv.hidden) return;
+    var cr = cv.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var w = Math.max(1, Math.round(cr.width * dpr)), h = Math.max(1, Math.round(cr.height * dpr));
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    if (!g) return;
+    var r = $('field').getBoundingClientRect();
+    var aw = r.width * dpr, ah = r.height * dpr;
+    var c = Math.max(3, Math.floor(Math.min(aw / (g.W + 1), ah / (g.H + 1))));
+    view.c = c;
+    view.ox = Math.round((r.left - cr.left) * dpr + (aw - g.W * c) / 2);
+    /* sit just under the HUD so any spare height is free thumb room below the level */
+    view.oy = Math.round((r.top - cr.top) * dpr + Math.min((ah - g.H * c) / 2, c * 0.7));
+    buildBase();
+  }
+  function buildBase() {
+    var c = view.c, pad = Math.ceil(c * 0.9), W = g.W, H = g.H, m = g.level.map, x, y;
+    if (!base) base = document.createElement('canvas');
+    base.width = W * c + pad * 2; base.height = H * c + pad * 2; base.pad = pad;
+    var b = base.getContext('2d');
+    b.setTransform(1, 0, 0, 1, pad, pad);
+    var fr = Math.max(3, Math.round(c * 0.28));
+    b.fillStyle = 'rgba(18,48,26,.32)'; b.fillRect(0, 0, W * c + fr * 2, H * c + fr * 2);
+    b.fillStyle = INK; b.fillRect(-fr, -fr, W * c + fr * 2, H * c + fr * 2);
+    b.fillStyle = GRASS; b.fillRect(0, 0, W * c, H * c);
+    var gr = b.createLinearGradient(0, 0, 0, H * c);
+    gr.addColorStop(0, ORCHID); gr.addColorStop(0.55, MIDFLOOR); gr.addColorStop(1, PAPER);
+    b.fillStyle = gr; b.beginPath();
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) if (m[y][x] !== '#') b.rect(x * c, y * c, c, c);
+    b.fill();
+    var hf = Math.floor(c / 2);
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) if (m[y][x] === 'F') {
+      b.fillStyle = FINISH; b.fillRect(x * c, y * c, c, c);
+      b.fillStyle = 'rgba(255,255,255,.18)'; b.fillRect(x * c, y * c, hf, hf); b.fillRect(x * c + hf, y * c + hf, c - hf, c - hf);
+    }
+    var lw = Math.max(2, 2 * Math.round(c * 0.05)), wall = function (px, py) { return px < 0 || py < 0 || px >= W || py >= H || m[py][px] === '#'; };
+    b.fillStyle = INK;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (m[y][x] === '#') continue;
+      if (wall(x, y - 1)) b.fillRect(x * c - lw / 2, y * c - lw / 2, c + lw, lw);
+      if (wall(x, y + 1)) b.fillRect(x * c - lw / 2, (y + 1) * c - lw / 2, c + lw, lw);
+      if (wall(x - 1, y)) b.fillRect(x * c - lw / 2, y * c - lw / 2, lw, c + lw);
+      if (wall(x + 1, y)) b.fillRect((x + 1) * c - lw / 2, y * c - lw / 2, lw, c + lw);
+    }
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      var k = 'A>V<'.indexOf(m[y][x]);
+      if (k >= 0) spike(b, x, y, c, k * Math.PI / 2);
+    }
+  }
+  function spike(b, x, y, c, rot) {
+    var h = c / 2;
+    b.save(); b.translate((x + 0.5) * c, (y + 0.5) * c); b.rotate(rot);
+    b.beginPath(); b.moveTo(-h * 0.94, h); b.lineTo(0, -h * 0.9); b.lineTo(h * 0.94, h); b.closePath(); b.fillStyle = STEEL; b.fill();
+    b.beginPath(); b.moveTo(-h * 0.94, h); b.lineTo(0, -h * 0.9); b.lineTo(-h * 0.2, h); b.closePath(); b.fillStyle = '#eef1f4'; b.fill();
+    b.beginPath(); b.moveTo(h * 0.94, h); b.lineTo(0, -h * 0.9); b.lineTo(h * 0.36, h); b.closePath(); b.fillStyle = '#66707a'; b.fill();
+    b.beginPath(); b.moveTo(-h * 0.94, h); b.lineTo(0, -h * 0.9); b.lineTo(h * 0.94, h);
+    b.strokeStyle = INK; b.lineWidth = Math.max(1.5, c * 0.07); b.lineJoin = 'round'; b.stroke();
+    b.restore();
+  }
+
+  /* ----- effects ----- */
+  function burst(x, y, color, n, speed, size) {
+    if (parts.length > 420) return;
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * 6.283, v = speed * (0.35 + Math.random() * 0.65);
+      parts.push({ x: x, y: y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 0.3 + Math.random() * 0.4, size: size * (0.6 + Math.random() * 0.7),
+        color: color === 'rainbow' ? RAINBOW[(Math.random() * 6) | 0] : color });
+    }
+  }
+  function pop(x, y, text, color) { pops.push({ x: x, y: y, text: text, color: color || PAPER, life: 0, max: 0.9 }); }
+  function jolt(k) { if (!calm()) shake = Math.max(shake, k); }
+
+  function handleEvents() {
+    var ev = g.events, p = g.squares[0];
+    for (var i = 0; i < ev.length; i++) {
+      var e = ev[i], s = e.s;
+      switch (e.type) {
+        case 'bounce':
+          if (s === p && performance.now() - lastBounce > 70) { lastBounce = performance.now(); tone(210, 150, 0.05, 'square', 0.03); }
+          break;
+        case 'bump':
+          burst(e.x, e.y, PAPER, 4, 4, 0.16);
+          if (e.a === p || e.b === p) tone(300, 200, 0.06, 'triangle', 0.06);
+          break;
+        case 'clash':
+          burst(e.x, e.y, SUN, 10, 7, 0.18); pop(e.x, e.y - 0.6, 'CLASH', SUN);
+          tone(900, 500, 0.08, 'square', 0.05); jolt(0.1);
+          break;
+        case 'ram':
+          burst(e.on.x, e.on.y, hue(e.on.col), 14, 8, 0.24); pop(e.on.x, e.on.y - 1, '-1', e.on === p ? '#ff9c94' : PAPER);
+          if (e.by === p) tone(520, 1040, 0.12, 'square', 0.06); else { tone(200, 70, 0.25, 'sawtooth', 0.08); jolt(0.3); }
+          jolt(0.14);
+          break;
+        case 'hurt':
+          if (e.src !== 'ram') {
+            burst(s.x, s.y, hue(s.col), 12, 7, 0.22); pop(s.x, s.y - 1, '-1', s === p ? '#ff9c94' : PAPER);
+            if (s === p) { tone(200, 70, 0.25, 'sawtooth', 0.08); jolt(0.3); } else tone(700, 350, 0.1, 'square', 0.04);
+          }
+          break;
+        case 'stun':
+          burst(s.x, s.y, PAPER, 8, 6, 0.18); pop(s.x, s.y - 1, 'STUN', s === p ? '#ff9c94' : PAPER);
+          if (s === p) { tone(240, 90, 0.22, 'sawtooth', 0.08); jolt(0.25); }
+          break;
+        case 'tink':
+          burst(s.x, s.y, '#ffffff', 3, 4, 0.12);
+          break;
+        case 'crate':
+          burst(e.x, e.y, '#c99f58', 7, 6, 0.24); noise(0.07, 0.07, 1800);
+          break;
+        case 'explode':
+          rings.push({ x: e.x, y: e.y, r: e.r, life: 0, max: 0.4 });
+          burst(e.x, e.y, '#ff8a1e', 26, 13, 0.3); burst(e.x, e.y, SUN, 14, 9, 0.22);
+          noise(0.4, 0.25, 700); tone(120, 40, 0.35, 'sine', 0.2); jolt(0.5);
+          break;
+        case 'death':
+          burst(s.x, s.y, hue(s.col), 30, 11, 0.32); burst(s.x, s.y, s.col.rainbow ? 'rainbow' : s.col.light, 12, 6, 0.22);
+          rings.push({ x: s.x, y: s.y, r: 1.6, life: 0, max: 0.3 });
+          noise(0.18, 0.12, 900); jolt(0.3);
+          break;
+        case 'boost':
+          burst(s.x, s.y, SUN, 8, 6, 0.18);
+          if (s === p) tone(400, 1200, 0.16, 'sawtooth', 0.04);
+          break;
+        case 'heat':
+          pop(s.x, s.y - 1.2, 'HEAT', '#ff8a1e'); burst(s.x, s.y, '#ff8a1e', 22, 10, 0.26); burst(s.x, s.y, SUN, 12, 7, 0.2);
+          rings.push({ x: s.x, y: s.y, r: HEAT_R, life: 0, max: 0.35 });
+          tone(220, 880, 0.3, 'sawtooth', 0.06); jolt(0.2);
+          break;
+        case 'burn':
+          burst(s.x, s.y, '#ff8a1e', 22, 10, 0.28); pop(s.x, s.y - 1, 'MELTED', '#ff8a1e');
+          noise(0.25, 0.14, 1400);
+          break;
+        case 'pickup':
+          pop(s.x, s.y - 1.1, 'GUN', SUN); burst(s.x, s.y, SUN, 10, 6, 0.2); tone(300, 900, 0.12, 'square', 0.06);
+          break;
+        case 'shot':
+          burst(e.x, e.y, SUN, 5, 7, 0.16); burst(e.x, e.y, '#ffffff', 2, 4, 0.14);
+          noise(0.06, 0.16, 2600); tone(180, 60, 0.07, 'square', 0.07); jolt(0.08);
+          break;
+        case 'drop':
+          burst(e.x, e.y, PAPER, 5, 4, 0.14);
+          break;
+        case 'spark':
+          burst(e.x, e.y, '#ffffff', 4, 5, 0.12);
+          break;
+        case 'out':
+          ghosts.push({ x: s.x, y: s.y, col: s.col, how: e.how, ux: s.ux, uy: s.uy, life: 0, max: e.how === 'volt' ? 1.1 : 2.2 });
+          pop(s.x, s.y - 1.1, OUTWORD[e.how], OUTCOL[e.how]);
+          if (e.how === 'volt') { bolts.push({ x1: e.bx, y1: e.by, x2: s.x, y2: s.y, life: 0, max: 0.32 }); burst(s.x, s.y, SUN, 18, 9, 0.22); burst(s.x, s.y, '#ffffff', 8, 6, 0.16); }
+          else if (e.how === 'frost') { burst(s.x, s.y, '#d8f3ff', 16, 7, 0.24); burst(s.x, s.y, '#ffffff', 8, 5, 0.18); tone(1900, 700, 0.3, 'triangle', 0.07); }
+          else { burst(s.x, s.y, '#9fb6ff', 14, 7, 0.22); tone(520, 0, 0.09, 'square', 0.06); tone(390, 0, 0.09, 'square', 0.06, 0.1); tone(260, 0, 0.2, 'square', 0.06, 0.2); }
+          if (s === p) jolt(0.4); else jolt(0.12);
+          break;
+        case 'charge':
+          tone(240, 720, 0.5, 'sawtooth', 0.035);
+          break;
+        case 'zap':
+          flashes.push({ x: e.x, y: e.y, r: e.r, life: 0, max: 0.3 });
+          noise(0.22, 0.2, 3200); tone(1500, 180, 0.22, 'sawtooth', 0.07); jolt(0.16);
+          break;
+        case 'throw':
+          burst(e.x, e.y, '#ffffff', 6, 6, 0.16); tone(1300, 1900, 0.09, 'triangle', 0.06); noise(0.05, 0.05, 4000);
+          break;
+        case 'chip':
+          burst(e.x, e.y, '#d8f3ff', 4, 4, 0.14);
+          break;
+        case 'siren':
+          tone(660, 0, 0.13, 'square', 0.045); tone(880, 0, 0.13, 'square', 0.045, 0.14); tone(660, 0, 0.13, 'square', 0.045, 0.28); tone(880, 0, 0.13, 'square', 0.045, 0.42);
+          if (s) pop(g.boss.x, g.boss.y - 2.3, 'STOP!', '#ff9c94');
+          break;
+        case 'phew':
+          pop(e.x, e.y - 2.3, e.bust ? 'GOTCHA' : 'PHEW', PAPER); tone(300, 160, 0.3, 'sine', 0.06);
+          break;
+        case 'wave':
+          burst(e.x, e.y, '#fff7b0', 8, 7, 0.18); noise(0.12, 0.12, 3600); tone(900, 260, 0.16, 'sawtooth', 0.05);
+          break;
+        case 'fizz':
+          burst(e.x, e.y, '#fff7b0', 3, 4, 0.12);
+          break;
+        case 'bosshit':
+          burst(e.x, e.y, '#ff8a1e', 30, 12, 0.3); burst(e.x, e.y, SUN, 16, 9, 0.24);
+          rings.push({ x: e.x, y: e.y, r: 2.6, life: 0, max: 0.35 });
+          pop(e.x, e.y - 2.2, e.hp > 0 ? 'BURNED!' : 'DONE FOR!', '#ffb347');
+          noise(0.25, 0.2, 1500); tone(700, 1400, 0.14, 'square', 0.07); jolt(0.3);
+          break;
+        case 'blink':
+          if (e.how === 'frost') {
+            /* Frost goes in a flurry of snow */
+            for (var bi = 0; bi <= 6; bi++) burst(e.x1 + (e.x2 - e.x1) * bi / 6, e.y1 + (e.y2 - e.y1) * bi / 6, bi % 2 ? '#ffffff' : '#bfe9ff', bi === 0 || bi === 6 ? 14 : 5, 6, 0.26);
+            tone(2200, 900, 0.22, 'triangle', 0.05); noise(0.18, 0.08, 5000);
+          } else {
+            bolts.push({ x1: e.x1, y1: e.y1, x2: e.x2, y2: e.y2, life: 0, max: 0.4 });
+            burst(e.x2, e.y2, '#fff7b0', 14, 8, 0.2); tone(1600, 500, 0.18, 'triangle', 0.05);
+          }
+          break;
+        case 'frozen':
+          burst(s.x, s.y, '#d8f3ff', 16, 7, 0.24); burst(s.x, s.y, '#ffffff', 8, 5, 0.18);
+          pop(s.x, s.y - 1.7, 'FROZEN', '#bfe9ff'); tone(1900, 700, 0.3, 'triangle', 0.07);
+          break;
+        case 'bossdown':
+          burst(e.x, e.y, g.boss.type === 'frost' ? '#a8e0ff' : SUN, 40, 14, 0.34); burst(e.x, e.y, '#ffffff', 20, 10, 0.26); burst(e.x, e.y, g.boss.type === 'frost' ? '#4aa3d8' : '#3b4046', 16, 8, 0.3);
+          rings.push({ x: e.x, y: e.y, r: 4.5, life: 0, max: 0.5 }); flashes.push({ x: e.x, y: e.y, r: 4.5, life: 0, max: 0.4 });
+          noise(0.5, 0.26, 800); tone(160, 40, 0.5, 'sine', 0.2); jolt(0.6);
+          break;
+        case 'finish':
+          burst(s.x, s.y, hue(s.col), 30, 10, 0.3); burst(s.x, s.y, PAPER, 16, 7, 0.22);
+          break;
+      }
+    }
+    ev.length = 0;
+  }
+  function updateFx(dt) {
+    var i, q;
+    for (i = parts.length - 1; i >= 0; i--) {
+      q = parts[i]; q.life += dt;
+      if (q.life >= q.max) { parts.splice(i, 1); continue; }
+      q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 1 - 3.2 * dt; q.vy *= 1 - 3.2 * dt;
+    }
+    for (i = pops.length - 1; i >= 0; i--) { q = pops[i]; q.life += dt; q.y -= 1.3 * dt; if (q.life >= q.max) pops.splice(i, 1); }
+    for (i = rings.length - 1; i >= 0; i--) { q = rings[i]; q.life += dt; if (q.life >= q.max) rings.splice(i, 1); }
+    for (i = ghosts.length - 1; i >= 0; i--) { q = ghosts[i]; q.life += dt; if (q.life >= q.max) ghosts.splice(i, 1); }
+    for (i = bolts.length - 1; i >= 0; i--) { q = bolts[i]; q.life += dt; if (q.life >= q.max) bolts.splice(i, 1); }
+    for (i = flashes.length - 1; i >= 0; i--) { q = flashes[i]; q.life += dt; if (q.life >= q.max) flashes.splice(i, 1); }
+    shake = Math.max(0, shake - dt * 1.6);
+  }
+
+  /* ----- drawing ----- */
+  function label(str, x, y, size, fill, edge) {
+    var c = view.c;
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, view.ox + off.x, view.oy + off.y);
+    ctx.font = Math.max(8, Math.round(size * c)) + 'px Bungee, "Arial Black", Impact, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (edge) { ctx.lineWidth = Math.max(2, c * 0.16); ctx.strokeStyle = edge; ctx.lineJoin = 'round'; ctx.strokeText(str, x * c, y * c); }
+    ctx.fillStyle = fill; ctx.fillText(str, x * c, y * c);
+    ctx.restore();
+  }
+  function drawTiles(now) {
+    var t = now / 1000, i, d, ch, x, y;
+    for (i = 0; i < g.dyn.length; i++) {
+      d = g.dyn[i]; x = d.x; y = d.y; ch = g.grid[y][x];
+      if (ch === ' ') continue;
+      if (ch === 'C') {
+        ctx.fillStyle = '#c99f58'; ctx.fillRect(x + 0.04, y + 0.04, 0.92, 0.92);
+        ctx.strokeStyle = '#8d6a30'; ctx.lineWidth = 0.07;
+        ctx.beginPath(); ctx.moveTo(x + 0.36, y + 0.08); ctx.lineTo(x + 0.36, y + 0.92); ctx.moveTo(x + 0.66, y + 0.08); ctx.lineTo(x + 0.66, y + 0.92); ctx.stroke();
+        ctx.strokeStyle = INK; ctx.lineWidth = 0.08; ctx.strokeRect(x + 0.04, y + 0.04, 0.92, 0.92);
+      } else if (ch === 'T') {
+        var lit = false;
+        for (var f = 0; f < g.fuses.length; f++) if (g.fuses[f].x === x && g.fuses[f].y === y) lit = true;
+        ctx.fillStyle = lit ? '#ffffff' : '#d8322c'; ctx.fillRect(x + 0.04, y + 0.04, 0.92, 0.92);
+        ctx.fillStyle = '#a81f1a';
+        ctx.fillRect(x + 0.27, y + 0.04, 0.06, 0.92); ctx.fillRect(x + 0.67, y + 0.04, 0.06, 0.92);
+        ctx.fillStyle = PAPER; ctx.fillRect(x + 0.04, y + 0.3, 0.92, 0.4);
+        ctx.strokeStyle = INK; ctx.lineWidth = 0.08; ctx.strokeRect(x + 0.04, y + 0.04, 0.92, 0.92);
+        label('TNT', x + 0.5, y + 0.52, 0.3, INK);
+      } else if (ch === '+') {
+        var pulse = 0.5 + 0.5 * Math.sin(t * 6 + x + y);
+        ctx.fillStyle = SUN; ctx.globalAlpha = 0.75 + 0.25 * pulse; ctx.fillRect(x + 0.08, y + 0.08, 0.84, 0.84); ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#a97800'; ctx.lineWidth = 0.07; ctx.strokeRect(x + 0.08, y + 0.08, 0.84, 0.84);
+        ctx.fillStyle = INK; ctx.beginPath();
+        ctx.moveTo(x + 0.6, y + 0.14); ctx.lineTo(x + 0.28, y + 0.56); ctx.lineTo(x + 0.47, y + 0.56); ctx.lineTo(x + 0.4, y + 0.86);
+        ctx.lineTo(x + 0.72, y + 0.44); ctx.lineTo(x + 0.53, y + 0.44); ctx.closePath(); ctx.fill();
+      } else {
+        var o = calm() ? 0 : ((t * 1.4 + (x + y) * 0.13) % 1) * 0.24 - 0.12;
+        ctx.fillStyle = 'rgba(30,170,190,.22)'; ctx.fillRect(x, y, 1, 1);
+        ctx.strokeStyle = 'rgba(18,48,26,.6)'; ctx.lineWidth = 0.13; ctx.lineJoin = 'miter'; ctx.lineCap = 'butt';
+        ctx.beginPath();
+        if (ch === 'r') { ctx.moveTo(x + 0.34 + o, y + 0.2); ctx.lineTo(x + 0.66 + o, y + 0.5); ctx.lineTo(x + 0.34 + o, y + 0.8); }
+        else if (ch === 'l') { ctx.moveTo(x + 0.66 - o, y + 0.2); ctx.lineTo(x + 0.34 - o, y + 0.5); ctx.lineTo(x + 0.66 - o, y + 0.8); }
+        else if (ch === 'd') { ctx.moveTo(x + 0.2, y + 0.34 + o); ctx.lineTo(x + 0.5, y + 0.66 + o); ctx.lineTo(x + 0.8, y + 0.34 + o); }
+        else { ctx.moveTo(x + 0.2, y + 0.66 - o); ctx.lineTo(x + 0.5, y + 0.34 - o); ctx.lineTo(x + 0.8, y + 0.66 - o); }
+        ctx.stroke();
+      }
+    }
+  }
+  function drawSaws() {
+    for (var i = 0; i < g.saws.length; i++) {
+      var w = g.saws[i], k;
+      ctx.strokeStyle = 'rgba(18,48,26,.28)'; ctx.lineWidth = 0.1; ctx.setLineDash([0.25, 0.25]);
+      ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke(); ctx.setLineDash([]);
+      ctx.save(); ctx.translate(w.x, w.y); ctx.rotate(calm() ? 0 : w.rot);
+      ctx.beginPath();
+      for (k = 0; k < 20; k++) {
+        var a = k / 20 * 6.283, rr = k % 2 ? w.r * 0.74 : w.r * 1.02;
+        if (k) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+      }
+      ctx.closePath(); ctx.fillStyle = '#d5dbe1'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 0.08; ctx.lineJoin = 'round'; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, w.r * 0.34, 0, 6.283); ctx.fillStyle = '#66707a'; ctx.fill(); ctx.stroke();
+      ctx.fillStyle = PAPER; ctx.fillRect(-0.07, -w.r * 0.34, 0.14, w.r * 0.3);
+      ctx.restore();
+    }
+  }
+  /* a stubby AK-style rifle: wooden stock, grip and handguard, curved magazine, long barrel */
+  function drawGun(x, y, ang, k, alpha) {
+    var wood = '#b06f2c', steel = '#3b4046', dark = '#24272b';
+    function box(bx, by, w, h, fill) { ctx.fillStyle = fill; ctx.fillRect(bx, by, w, h); ctx.strokeRect(bx, by, w, h); }
+    function poly(pts, fill) {
+      ctx.beginPath(); ctx.moveTo(pts[0], pts[1]);
+      for (var i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]);
+      ctx.closePath(); ctx.fillStyle = fill; ctx.fill(); ctx.stroke();
+    }
+    ctx.save(); ctx.translate(x, y); ctx.rotate(ang);
+    if (Math.cos(ang) < 0) ctx.scale(1, -1);
+    ctx.scale(k, k); ctx.globalAlpha = alpha;
+    ctx.lineJoin = 'round'; ctx.lineWidth = 0.055; ctx.strokeStyle = INK;
+    poly([-1.0, -0.05, -0.46, -0.11, -0.46, 0.1, -1.0, 0.25], wood);
+    box(0.5, -0.07, 0.5, 0.09, steel); box(0.98, -0.1, 0.1, 0.15, dark);
+    box(0.2, -0.18, 0.46, 0.07, steel); box(0.84, -0.22, 0.06, 0.15, dark);
+    box(-0.46, -0.13, 0.66, 0.26, steel); box(-0.12, -0.2, 0.1, 0.07, dark);
+    box(0.2, -0.11, 0.36, 0.22, wood);
+    poly([-0.02, 0.13, 0.17, 0.13, 0.31, 0.35, 0.4, 0.58, 0.21, 0.64, 0.1, 0.39], dark);
+    poly([-0.34, 0.13, -0.18, 0.13, -0.26, 0.42, -0.43, 0.37], wood);
+    ctx.restore();
+  }
+  function drawGuns(now) {
+    for (var i = 0; i < g.guns.length; i++) {
+      var gun = g.guns[i];
+      if (gun.holder) continue;
+      var ready = gun.cool <= 0, pulse = calm() ? 0.5 : 0.5 + 0.5 * Math.sin(now / 160);
+      ctx.beginPath(); ctx.arc(gun.x, gun.y, 0.95 + (ready ? pulse * 0.12 : 0), 0, 6.283);
+      ctx.fillStyle = ready ? 'rgba(255,212,58,' + (0.3 + 0.25 * pulse).toFixed(2) + ')' : 'rgba(18,48,26,.12)'; ctx.fill();
+      ctx.strokeStyle = ready ? SUN : 'rgba(18,48,26,.35)'; ctx.lineWidth = 0.09; ctx.stroke();
+      if (!ready) {
+        ctx.beginPath(); ctx.arc(gun.x, gun.y, 0.95, -Math.PI / 2, -Math.PI / 2 + (1 - gun.cool / GUN_COOL) * 6.283);
+        ctx.strokeStyle = INK; ctx.lineWidth = 0.12; ctx.stroke();
+      }
+      drawGun(gun.x - 0.02, gun.y - 0.08 + (ready && !calm() ? Math.sin(now / 260) * 0.06 : 0), -0.32, 0.8, ready ? 1 : 0.4);
+    }
+  }
+  function flame(x, y, k) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(k, k);
+    ctx.beginPath(); ctx.moveTo(0, -0.62);
+    ctx.quadraticCurveTo(0.55, -0.1, 0.4, 0.3); ctx.quadraticCurveTo(0.28, 0.62, 0, 0.62);
+    ctx.quadraticCurveTo(-0.32, 0.62, -0.42, 0.28); ctx.quadraticCurveTo(-0.5, -0.02, -0.18, -0.2);
+    ctx.quadraticCurveTo(-0.12, -0.42, 0, -0.62); ctx.closePath();
+    ctx.fillStyle = '#ff5a1a'; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 0.07; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0.02, -0.12);
+    ctx.quadraticCurveTo(0.3, 0.14, 0.2, 0.36); ctx.quadraticCurveTo(0.12, 0.5, 0, 0.5);
+    ctx.quadraticCurveTo(-0.2, 0.5, -0.2, 0.3); ctx.quadraticCurveTo(-0.2, 0.08, 0.02, -0.12); ctx.closePath();
+    ctx.fillStyle = SUN; ctx.fill();
+    ctx.restore();
+  }
+  function drawHeats(now) {
+    for (var i = 0; i < g.heats.length; i++) {
+      var h = g.heats[i], s = h.holder, pulse = calm() ? 0.5 : 0.5 + 0.5 * Math.sin(now / 150);
+      if (!s) {
+        var ready = h.cool <= 0;
+        if (h.path) {
+          ctx.strokeStyle = 'rgba(255,90,26,.4)'; ctx.lineWidth = 0.1; ctx.setLineDash([0.25, 0.25]);
+          ctx.beginPath(); ctx.moveTo(h.path.x1, h.path.y1); ctx.lineTo(h.path.x2, h.path.y2); ctx.stroke(); ctx.setLineDash([]);
+        }
+        ctx.globalAlpha = ready ? 1 : 0.4;
+        ctx.beginPath(); ctx.arc(h.x, h.y, 0.95 + pulse * 0.14, 0, 6.283);
+        ctx.fillStyle = 'rgba(255,120,20,' + (0.25 + 0.25 * pulse).toFixed(2) + ')'; ctx.fill();
+        ctx.strokeStyle = '#ff5a1a'; ctx.lineWidth = 0.1; ctx.stroke();
+        flame(h.x, h.y - 0.04, 1.05 + (calm() ? 0 : pulse * 0.08));
+        ctx.globalAlpha = 1;
+        continue;
+      }
+      if (s.dead) continue;
+      var gr = ctx.createRadialGradient(s.x, s.y, HEAT_R * 0.35, s.x, s.y, HEAT_R);
+      gr.addColorStop(0, 'rgba(255,170,40,0)'); gr.addColorStop(0.72, 'rgba(255,120,20,' + (0.22 + 0.1 * pulse).toFixed(2) + ')'); gr.addColorStop(1, 'rgba(232,55,47,.6)');
+      ctx.beginPath(); ctx.arc(s.x, s.y, HEAT_R, 0, 6.283); ctx.fillStyle = gr; ctx.fill();
+      ctx.strokeStyle = '#e8372f'; ctx.lineWidth = 0.12; ctx.setLineDash([0.4, 0.24]); ctx.lineDashOffset = calm() ? 0 : -now / 110;
+      ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+      if (!calm() && !paused && parts.length < 300 && Math.random() < 0.35) {
+        var a = Math.random() * 6.283;
+        parts.push({ x: s.x + Math.cos(a) * HEAT_R, y: s.y + Math.sin(a) * HEAT_R, vx: Math.cos(a) * 1.5, vy: Math.sin(a) * 1.5 - 1.2, life: 0, max: 0.45, size: 0.2, color: Math.random() < 0.5 ? '#ff8a1e' : SUN });
+      }
+    }
+  }
+  /* ----- bosses ----- */
+  function rayLen(x, y, a, max) {
+    var dx = Math.cos(a) * 0.25, dy = Math.sin(a) * 0.25, n = Math.round(max / 0.25);
+    for (var i = 1; i <= n; i++) { var t = tileAt(g, Math.floor(x + dx * i), Math.floor(y + dy * i)); if (t === '#' || t === 'C' || t === 'T') return i * 0.25; }
+    return max;
+  }
+  /* what sits on the floor under the squares: Volt's ring, Frost's aim lines, Sarge's room and torch beam */
+  function drawBossUnder(now) {
+    var b = g.boss, z = b.zone, i;
+    if (b.duel && b.type === 'frost') {
+      /* the track he skates along, and one red line per shard he is about to throw */
+      if (b.plen > 0 && b.hp > 0) {
+        ctx.strokeStyle = 'rgba(74,163,216,.45)'; ctx.lineWidth = 0.12; ctx.lineCap = 'round'; ctx.setLineDash([0.2, 0.5]);
+        ctx.beginPath(); ctx.moveTo(b.px1, b.py1); ctx.lineTo(b.px2, b.py2); ctx.stroke(); ctx.setLineDash([]); ctx.lineCap = 'butt';
+      }
+      if (b.tell > 0 && b.hp > 0 && !g.over) {
+        ctx.lineWidth = 0.2; ctx.setLineDash([0.4, 0.3]);
+        ctx.strokeStyle = 'rgba(232,55,47,' + (0.35 + 0.55 * b.tell).toFixed(2) + ')';
+        for (i = 0; i < b.fanN; i++) {
+          var fa = b.aim + (i - (b.fanN - 1) / 2) * FROST_FAN, fl = rayLen(b.x, b.y, fa, 30);
+          ctx.beginPath(); ctx.moveTo(b.x + Math.cos(fa) * 1.2, b.y + Math.sin(fa) * 1.2); ctx.lineTo(b.x + Math.cos(fa) * fl, b.y + Math.sin(fa) * fl); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+      return;
+    }
+    if (b.duel) {
+      /* the strip his next wave will sweep */
+      if (b.tell > 0 && b.hp > 0 && !g.over) {
+        /* one lane per spark, each as long as that spark will fly, so cover behind a pillar shows up as cover */
+        var n = DUEL_SPARKS[Math.max(0, Math.min(2, b.hp - 1))], half = (n - 1) / 2, dx = Math.cos(b.aim), dy = Math.sin(b.aim), o, len;
+        ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.aim);
+        ctx.beginPath(); ctx.moveTo(1.2, -half * WAVE_STEP - 0.3);
+        for (i = 0; i < n; i++) {
+          o = (i - half) * WAVE_STEP; len = Math.max(1.4, 1.1 + rayLen(b.x + dx * 1.1 - dy * o, b.y + dy * 1.1 + dx * o, b.aim, 30));
+          ctx.lineTo(len, o - 0.3); ctx.lineTo(len, o + 0.3);
+        }
+        ctx.lineTo(1.2, half * WAVE_STEP + 0.3); ctx.closePath();
+        ctx.fillStyle = 'rgba(232,55,47,' + (0.1 + 0.2 * b.tell).toFixed(2) + ')'; ctx.fill();
+        ctx.strokeStyle = 'rgba(232,55,47,' + (0.4 + 0.5 * b.tell).toFixed(2) + ')'; ctx.lineWidth = 0.12; ctx.lineJoin = 'round'; ctx.setLineDash([0.4, 0.3]);
+        ctx.stroke(); ctx.setLineDash([]);
+        ctx.restore();
+      }
+      return;
+    }
+    if (b.type === 'volt') {
+      var VOLT_R = b.R;
+      var ch = b.charge, hot = ch > 0, blink = hot && ch > 0.6 && !calm() && Math.floor(now / 70) % 2 === 0;
+      ctx.beginPath(); ctx.arc(b.x, b.y, VOLT_R, 0, 6.283);
+      ctx.fillStyle = 'rgba(255,212,58,' + (hot ? 0.2 : 0.1) + ')'; ctx.fill();
+      if (hot) {
+        ctx.beginPath(); ctx.arc(b.x, b.y, VOLT_R * ch, 0, 6.283);
+        ctx.fillStyle = blink ? 'rgba(255,255,255,.55)' : 'rgba(255,225,70,' + (0.3 + 0.35 * ch).toFixed(2) + ')'; ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(b.x, b.y, VOLT_R, 0, 6.283);
+      ctx.strokeStyle = hot ? '#e8372f' : '#a97800'; ctx.lineWidth = hot ? 0.16 : 0.1;
+      ctx.setLineDash([0.45, 0.3]); ctx.lineDashOffset = calm() ? 0 : -now / 90; ctx.stroke(); ctx.setLineDash([]); ctx.lineDashOffset = 0;
+      return;
+    }
+    /* the boss's room, with a line where the safe strip begins */
+    var tx, ty, seg = 0.5, n = Math.round((z[2] - z[0]) / seg);
+    ctx.fillStyle = b.type === 'frost' ? 'rgba(190,232,255,.3)' : 'rgba(60,90,200,.1)';
+    for (ty = z[1]; ty < z[3]; ty++) for (tx = z[0]; tx < z[2]; tx++) if (g.grid[ty][tx] !== '#') ctx.fillRect(tx, ty, 1, 1);
+    for (i = 0; i < n; i++) {
+      if (g.grid[z[3] - 1][Math.floor(z[0] + i * seg)] === '#') continue;
+      ctx.fillStyle = b.type === 'frost' ? (i % 2 ? '#ffffff' : '#4aa3d8') : (i % 2 ? INK : SUN);
+      ctx.fillRect(z[0] + i * seg, z[3] - 0.07, seg, 0.14);
+    }
+    if (b.type === 'frost') {
+      if (b.tell > 0) {
+        ctx.lineWidth = 0.18; ctx.setLineDash([0.4, 0.3]);
+        for (i = -1; i <= 1; i++) {
+          var a = b.aim + i * FROST_FAN, len = rayLen(b.x, b.y, a, 16);
+          ctx.strokeStyle = 'rgba(232,55,47,' + (0.35 + 0.55 * b.tell).toFixed(2) + ')';
+          ctx.beginPath(); ctx.moveTo(b.x + Math.cos(a) * 1.2, b.y + Math.sin(a) * 1.2); ctx.lineTo(b.x + Math.cos(a) * len, b.y + Math.sin(a) * len); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+    } else if (b.phase === 'chase' && b.run >= COP_WIND) {
+      var a0 = b.aim, L2 = 4.6;
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(b.x + Math.cos(a0 - 0.36) * L2, b.y + Math.sin(a0 - 0.36) * L2);
+      ctx.lineTo(b.x + Math.cos(a0 + 0.36) * L2, b.y + Math.sin(a0 + 0.36) * L2); ctx.closePath();
+      ctx.fillStyle = 'rgba(255,240,150,.38)'; ctx.fill();
+    }
+  }
+  function iceBlock(x, y) {
+    var e = HALF + 0.2;
+    ctx.fillStyle = 'rgba(170,225,255,.72)'; ctx.fillRect(x - e, y - e, e * 2, e * 2);
+    ctx.fillStyle = 'rgba(255,255,255,.85)';
+    ctx.beginPath(); ctx.moveTo(x - e + 0.15, y - e + 0.55); ctx.lineTo(x - e + 0.55, y - e + 0.15); ctx.lineTo(x - e + 0.8, y - e + 0.15); ctx.lineTo(x - e + 0.15, y - e + 0.8); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2b7bbf'; ctx.lineWidth = 0.1; ctx.strokeRect(x - e, y - e, e * 2, e * 2);
+  }
+  /* how many burns a duel boss can still take */
+  function bossPips(b, x, top, fill) {
+    var pw = 0.42, gap = 0.16, tot = b.maxHp * pw + (b.maxHp - 1) * gap, py = Math.max(1.14, top);
+    for (var i = 0; i < b.maxHp; i++) {
+      ctx.fillStyle = i < b.hp ? fill : 'rgba(255,251,227,.55)'; ctx.fillRect(x - tot / 2 + i * (pw + gap), py, pw, pw);
+      ctx.strokeStyle = INK; ctx.lineWidth = 0.08; ctx.strokeRect(x - tot / 2 + i * (pw + gap), py, pw, pw);
+    }
+  }
+  function drawGhosts(now) {
+    for (var i = 0; i < ghosts.length; i++) {
+      var q = ghosts[i], left = q.max - q.life, x = q.x, y = q.y, k;
+      ctx.globalAlpha = Math.min(1, left * 2.5);
+      if (q.how === 'volt') {
+        var flick = Math.floor(now / 60) % 2 === 0;
+        ctx.fillStyle = flick ? '#2a2f36' : '#ffffff'; ctx.fillRect(x - HALF, y - HALF, SQ, SQ);
+        ctx.strokeStyle = SUN; ctx.lineWidth = 0.12; ctx.strokeRect(x - HALF + 0.05, y - HALF + 0.05, SQ - 0.1, SQ - 0.1);
+        ctx.fillStyle = flick ? '#ffffff' : '#2a2f36';
+        ctx.fillRect(x - 0.42, y - 0.3, 0.3, 0.3); ctx.fillRect(x + 0.12, y - 0.3, 0.3, 0.3); ctx.fillRect(x - 0.3, y + 0.22, 0.6, 0.14);
+      } else {
+        drawFace(ctx, q.col, x, y, now, { ux: q.ux, uy: q.uy });
+        if (q.how === 'frost') iceBlock(x, y);
+        else {
+          ctx.strokeStyle = INK; ctx.lineWidth = 0.12; ctx.strokeRect(x - HALF - 0.14, y - HALF - 0.14, SQ + 0.28, SQ + 0.28);
+          ctx.fillStyle = '#3d4650';
+          for (k = 0; k < 4; k++) ctx.fillRect(x - HALF + 0.08 + k * 0.345, y - HALF - 0.14, 0.13, SQ + 0.28);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+  function bossEyes(x, y, lx, ly, white, pupil, shut) {
+    var ex = 0.56, ey = -0.3, es = 0.58, ps = 0.3;
+    if (shut) { ctx.fillStyle = pupil; ctx.fillRect(x - ex - es / 2, y + ey - 0.07, es, 0.14); ctx.fillRect(x + ex - es / 2, y + ey - 0.07, es, 0.14); return; }
+    ctx.fillStyle = white; ctx.fillRect(x - ex - es / 2, y + ey - es / 2, es, es); ctx.fillRect(x + ex - es / 2, y + ey - es / 2, es, es);
+    ctx.fillStyle = pupil;
+    ctx.fillRect(x - ex - ps / 2 + lx * 0.12, y + ey - ps / 2 + ly * 0.12, ps, ps); ctx.fillRect(x + ex - ps / 2 + lx * 0.12, y + ey - ps / 2 + ly * 0.12, ps, ps);
+  }
+  function tri3(ax, ay, bx, by, cx, cy, fill, edge) {
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath();
+    ctx.fillStyle = fill; ctx.fill(); if (edge) ctx.stroke();
+  }
+  function drawBoss(now) {
+    var b = g.boss, h = b.half, S2 = h * 2, bob = calm() ? 0 : Math.sin(now / 320) * 0.05;
+    var x = b.x, y = b.y + (b.type === 'cop' ? 0 : bob), L = x - h, T = y - h, i;
+    var lx = Math.cos(b.aim), ly = Math.sin(b.aim);
+    ctx.lineJoin = 'miter'; ctx.strokeStyle = INK;
+    if (b.type === 'volt') {
+      var near = null, nd = 1e9;
+      for (i = 0; i < g.squares.length; i++) { var s = g.squares[i]; if (s.dead) continue; var d = Math.hypot(s.x - x, s.y - y); if (d < nd) { nd = d; near = s; } }
+      if (near) { lx = (near.x - x) / (nd || 1); ly = (near.y - y) / (nd || 1); }
+      var hot = b.duel ? b.tell > 0 : b.charge > 0, flick = hot && !calm() && Math.floor(now / 70) % 2 === 0;
+      if (b.duel && b.inv > 0 && Math.floor(now / 80) % 2 === 0) ctx.globalAlpha = 0.45;
+      /* two prongs with a spark jumping between them */
+      ctx.lineWidth = 0.08;
+      ctx.fillStyle = '#3b4046'; ctx.fillRect(x - 0.78, T - 0.42, 0.2, 0.46); ctx.strokeRect(x - 0.78, T - 0.42, 0.2, 0.46); ctx.fillRect(x + 0.58, T - 0.42, 0.2, 0.46); ctx.strokeRect(x + 0.58, T - 0.42, 0.2, 0.46);
+      ctx.fillStyle = hot ? '#ffffff' : SUN; ctx.fillRect(x - 0.84, T - 0.62, 0.32, 0.26); ctx.strokeRect(x - 0.84, T - 0.62, 0.32, 0.26); ctx.fillRect(x + 0.52, T - 0.62, 0.32, 0.26); ctx.strokeRect(x + 0.52, T - 0.62, 0.32, 0.26);
+      if (hot && !calm()) {
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.09; ctx.beginPath(); ctx.moveTo(x - 0.52, T - 0.5);
+        for (i = 1; i < 5; i++) ctx.lineTo(x - 0.52 + i * 0.21, T - 0.5 + (Math.random() - 0.5) * 0.4);
+        ctx.lineTo(x + 0.52, T - 0.5); ctx.stroke(); ctx.strokeStyle = INK;
+      }
+      ctx.fillStyle = flick ? '#fff6b8' : '#ffd43a'; ctx.fillRect(L, T, S2, S2);
+      ctx.fillStyle = flick ? '#ffe680' : '#f0b400'; ctx.fillRect(L, y + h - 0.5, S2, 0.5);
+      ctx.lineWidth = 0.14; ctx.strokeRect(L + 0.07, T + 0.07, S2 - 0.14, S2 - 0.14);
+      /* bolt on the belly */
+      ctx.beginPath(); ctx.moveTo(x + 0.22, y + 0.12); ctx.lineTo(x - 0.34, y + 0.66); ctx.lineTo(x - 0.02, y + 0.66); ctx.lineTo(x - 0.2, y + 1.08);
+      ctx.lineTo(x + 0.4, y + 0.5); ctx.lineTo(x + 0.06, y + 0.5); ctx.lineTo(x + 0.34, y + 0.12); ctx.closePath(); ctx.fillStyle = INK; ctx.fill();
+      bossEyes(x, y, lx, ly, '#ffffff', hot ? '#e8372f' : '#111', false);
+      tri3(x - 0.9, y - 0.78, x - 0.22, y - 0.56, x - 0.9, y - 0.56, INK); tri3(x + 0.9, y - 0.78, x + 0.22, y - 0.56, x + 0.9, y - 0.56, INK);
+      ctx.globalAlpha = 1;
+      if (b.duel) bossPips(b, x, T - 1.3, '#ffd43a');
+    } else if (b.type === 'frost') {
+      if (b.duel && b.inv > 0 && Math.floor(now / 80) % 2 === 0) ctx.globalAlpha = 0.45;
+      ctx.fillStyle = '#a8e0ff'; ctx.fillRect(L, T, S2, S2);
+      ctx.fillStyle = '#7cc7f2'; ctx.fillRect(L, y + h - 0.5, S2, 0.5);
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.fillRect(L + 0.2, T + 0.62, 0.14, 1.2); ctx.fillRect(L + 0.42, T + 0.62, 0.08, 0.7);
+      ctx.lineWidth = 0.14; ctx.strokeRect(L + 0.07, T + 0.07, S2 - 0.14, S2 - 0.14);
+      /* snow cap with icicles */
+      ctx.lineWidth = 0.08;
+      for (i = 0; i < 4; i++) tri3(L + 0.14 + i * 0.62, T + 0.3, L + 0.56 + i * 0.62, T + 0.3, L + 0.35 + i * 0.62, T + 0.3 + (i % 2 ? 0.5 : 0.34), '#ffffff', true);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(L - 0.1, T - 0.14, S2 + 0.2, 0.46); ctx.strokeRect(L - 0.1, T - 0.14, S2 + 0.2, 0.46);
+      bossEyes(x, y + 0.12, lx, ly, '#ffffff', '#1b3a66', false);
+      /* mouth: puffs up while taking aim */
+      ctx.fillStyle = '#1b3a66';
+      if (b.tell > 0) { ctx.fillRect(x - 0.2, y + 0.5, 0.4, 0.4); ctx.fillStyle = '#ffffff'; ctx.fillRect(x - 0.1, y + 0.6, 0.2, 0.2); }
+      else ctx.fillRect(x - 0.3, y + 0.62, 0.6, 0.12);
+      ctx.globalAlpha = 1;
+      if (b.duel) bossPips(b, x, T - 0.86, '#6cc4f5');
+    } else {
+      var rest = b.phase === 'rest', chase = b.phase === 'chase' && b.run >= COP_WIND, warm = b.phase === 'chase' && !chase, puff = rest && !calm() ? Math.sin(now / 130) * 0.05 : 0;
+      ctx.fillStyle = '#2f4a9e'; ctx.fillRect(L - puff, T - puff, S2 + puff * 2, S2 + puff * 2);
+      ctx.fillStyle = '#263c82'; ctx.fillRect(L - puff, y + h - 0.5, S2 + puff * 2, 0.5 + puff);
+      ctx.lineWidth = 0.14; ctx.strokeRect(L + 0.07 - puff, T + 0.07 - puff, S2 - 0.14 + puff * 2, S2 - 0.14 + puff * 2);
+      /* cap, badge and the light on top */
+      ctx.lineWidth = 0.08;
+      var lamp = chase ? (Math.floor(now / 140) % 2 ? '#e8372f' : '#3aa0ff') : warm ? '#ffb020' : rest ? '#56606c' : '#9b2f2a';
+      if (chase && !calm()) { ctx.beginPath(); ctx.arc(x, T - 0.86, 0.5, 0, 6.283); ctx.fillStyle = Math.floor(now / 140) % 2 ? 'rgba(232,55,47,.35)' : 'rgba(58,160,255,.35)'; ctx.fill(); }
+      ctx.fillStyle = lamp; ctx.fillRect(x - 0.24, T - 1.0, 0.48, 0.34); ctx.strokeRect(x - 0.24, T - 1.0, 0.48, 0.34);
+      ctx.fillStyle = '#16224d'; ctx.fillRect(L + 0.2, T - 0.68, S2 - 0.4, 0.7); ctx.strokeRect(L + 0.2, T - 0.68, S2 - 0.4, 0.7);
+      ctx.fillStyle = '#0e1733'; ctx.fillRect(L - 0.14, T - 0.06, S2 + 0.28, 0.26); ctx.strokeRect(L - 0.14, T - 0.06, S2 + 0.28, 0.26);
+      ctx.fillStyle = SUN; ctx.fillRect(x - 0.18, T - 0.52, 0.36, 0.36); ctx.strokeRect(x - 0.18, T - 0.52, 0.36, 0.36);
+      bossEyes(x, y + 0.14, lx, ly, '#ffffff', '#111', rest);
+      if (!rest) { ctx.fillStyle = INK; ctx.fillRect(x - 0.92, y - 0.6, 0.72, 0.16); ctx.fillRect(x + 0.2, y - 0.6, 0.72, 0.16); }
+      /* moustache and chest badge */
+      tri3(x - 0.04, y + 0.36, x - 0.74, y + 0.36, x - 0.6, y + 0.68, INK); tri3(x + 0.04, y + 0.36, x + 0.74, y + 0.36, x + 0.6, y + 0.68, INK);
+      ctx.lineWidth = 0.06;
+      ctx.beginPath(); ctx.moveTo(L + 0.5, y + 0.66); ctx.lineTo(L + 0.72, y + 0.88); ctx.lineTo(L + 0.5, y + 1.1); ctx.lineTo(L + 0.28, y + 0.88); ctx.closePath(); ctx.fillStyle = SUN; ctx.fill(); ctx.stroke();
+      if (rest && !calm()) {
+        ctx.fillStyle = '#9be9ff';
+        var dy2 = (now / 500) % 1;
+        ctx.fillRect(L - 0.36, T + 0.3 + dy2 * 0.7, 0.18, 0.26); ctx.fillRect(x + h + 0.2, T + 0.6 + ((dy2 + 0.5) % 1) * 0.7, 0.18, 0.26);
+      }
+      /* breath bar: red while he has puff left, green while he gets it back */
+      var frac = rest ? 1 - Math.max(0, b.t) / COP_REST : Math.max(0, b.stam) / COP_CHASE, bw = 2.0;
+      ctx.fillStyle = 'rgba(255,251,227,.85)'; ctx.fillRect(x - bw / 2, T - 1.42, bw, 0.24);
+      ctx.fillStyle = rest ? '#2fc33a' : '#e8372f'; ctx.fillRect(x - bw / 2, T - 1.42, bw * frac, 0.24);
+      ctx.lineWidth = 0.06; ctx.strokeRect(x - bw / 2, T - 1.42, bw, 0.24);
+    }
+  }
+  function drawShards() {
+    for (var i = 0; i < g.shards.length; i++) {
+      var q = g.shards[i], m = Math.hypot(q.vx, q.vy) || 1, ux = q.vx / m, uy = q.vy / m, px = -uy, py = ux;
+      ctx.beginPath(); ctx.moveTo(q.x + ux * 0.5, q.y + uy * 0.5); ctx.lineTo(q.x + px * 0.24, q.y + py * 0.24);
+      ctx.lineTo(q.x - ux * 0.5, q.y - uy * 0.5); ctx.lineTo(q.x - px * 0.24, q.y - py * 0.24); ctx.closePath();
+      ctx.fillStyle = '#e4f7ff'; ctx.fill(); ctx.strokeStyle = '#1f6fb0'; ctx.lineWidth = 0.1; ctx.lineJoin = 'round'; ctx.stroke();
+    }
+  }
+  /* Volt's waves in the duel: a crackling arc strung between a row of sparks */
+  function drawSparks(now) {
+    var S = g.sparks, i, q, r, pass;
+    if (!S.length) return;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    for (pass = 0; pass < 3; pass++) {
+      ctx.strokeStyle = pass === 0 ? 'rgba(255,212,58,.38)' : pass === 1 ? INK : '#fff7b0';
+      ctx.lineWidth = pass === 0 ? 0.95 : pass === 1 ? 0.36 : 0.19;
+      for (i = 0; i + 1 < S.length; i++) {
+        q = S[i]; r = S[i + 1];
+        if (q.w !== r.w || Math.hypot(r.x - q.x, r.y - q.y) > WAVE_STEP * 1.6) continue;
+        var m = Math.hypot(q.vx, q.vy) || 1, nx = q.vx / m, ny = q.vy / m;
+        var j = pass === 0 ? 0 : calm() ? (i % 2 ? 0.14 : -0.14) : Math.sin(now / 37 + i * 2.4 + q.w) * 0.22;
+        ctx.beginPath(); ctx.moveTo(q.x, q.y);
+        ctx.lineTo(q.x + (r.x - q.x) * 0.35 + nx * j, q.y + (r.y - q.y) * 0.35 + ny * j);
+        ctx.lineTo(q.x + (r.x - q.x) * 0.7 - nx * j, q.y + (r.y - q.y) * 0.7 - ny * j);
+        ctx.lineTo(r.x, r.y); ctx.stroke();
+      }
+    }
+    ctx.lineCap = 'butt';
+    for (i = 0; i < S.length; i++) {
+      q = S[i];
+      var k = calm() ? 0.22 : 0.19 + 0.06 * Math.sin(now / 40 + i);
+      ctx.fillStyle = 'rgba(255,212,58,.38)'; ctx.fillRect(q.x - 0.46, q.y - 0.46, 0.92, 0.92);
+      ctx.fillStyle = INK; ctx.fillRect(q.x - k - 0.07, q.y - k - 0.07, (k + 0.07) * 2, (k + 0.07) * 2);
+      ctx.fillStyle = Math.floor(now / 60 + i) % 2 ? '#ffffff' : '#ffd43a'; ctx.fillRect(q.x - k, q.y - k, k * 2, k * 2);
+    }
+  }
+  function drawBossFx() {
+    var i, q, k;
+    for (i = 0; i < flashes.length; i++) {
+      q = flashes[i]; k = q.life / q.max;
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.r, 0, 6.283); ctx.fillStyle = 'rgba(255,255,220,' + (0.75 * (1 - k)).toFixed(2) + ')'; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,212,58,' + (1 - k).toFixed(2) + ')'; ctx.lineWidth = 0.3 * (1 - k) + 0.05; ctx.stroke();
+    }
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    for (i = 0; i < bolts.length; i++) {
+      q = bolts[i];
+      var dx = q.x2 - q.x1, dy = q.y2 - q.y1, m = Math.hypot(dx, dy) || 1, nx = -dy / m, ny = dx / m;
+      ctx.beginPath(); ctx.moveTo(q.x1, q.y1);
+      for (k = 1; k < 6; k++) { var j = calm() ? (k % 2 ? 0.25 : -0.25) : (Math.random() - 0.5) * 0.9; ctx.lineTo(q.x1 + dx * k / 6 + nx * j, q.y1 + dy * k / 6 + ny * j); }
+      ctx.lineTo(q.x2, q.y2);
+      ctx.strokeStyle = INK; ctx.lineWidth = 0.3; ctx.stroke(); ctx.strokeStyle = '#fff7b0'; ctx.lineWidth = 0.16; ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  function drawBullets() {
+    ctx.lineCap = 'round';
+    for (var i = 0; i < g.bullets.length; i++) {
+      var b = g.bullets[i], m = Math.hypot(b.vx, b.vy) || 1, ux = b.vx / m, uy = b.vy / m;
+      ctx.strokeStyle = INK; ctx.lineWidth = 0.28;
+      ctx.beginPath(); ctx.moveTo(b.x - ux * 0.5, b.y - uy * 0.5); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.strokeStyle = SUN; ctx.lineWidth = 0.15;
+      ctx.beginPath(); ctx.moveTo(b.x - ux * 0.5, b.y - uy * 0.5); ctx.lineTo(b.x, b.y); ctx.stroke();
+    }
+    ctx.lineCap = 'butt';
+  }
+  /* body, outline and face of one square, in level units, onto any 2D context (game and menu share it) */
+  function drawFace(c, col, x, y, now, o) {
+    var skin = col.skin, stunned = o.stunned, ux = o.ux || 0, uy = o.uy || 0;
+    var L = x - HALF, T = y - HALF, R = x + HALF, B = y + HALF, i;
+    function tri(ax, ay, bx, by, px, py, fill, edge) {
+      c.beginPath(); c.moveTo(ax, ay); c.lineTo(bx, by); c.lineTo(px, py); c.closePath();
+      c.fillStyle = fill; c.fill(); if (edge) c.stroke();
+    }
+    c.lineJoin = 'miter'; c.strokeStyle = INK; c.lineWidth = 0.07;
+    if (skin === 'tiger') {
+      tri(L + 0.02, T + 0.1, L + 0.5, T + 0.1, L + 0.16, T - 0.3, col.fill, true); tri(R - 0.02, T + 0.1, R - 0.5, T + 0.1, R - 0.16, T - 0.3, col.fill, true);
+      tri(L + 0.17, T + 0.06, L + 0.38, T + 0.06, L + 0.22, T - 0.13, '#ffb3c1'); tri(R - 0.17, T + 0.06, R - 0.38, T + 0.06, R - 0.22, T - 0.13, '#ffb3c1');
+    } else if (skin === 'dragon') {
+      tri(L + 0.06, T + 0.1, L + 0.4, T + 0.1, L + 0.1, T - 0.36, '#fff1c7', true); tri(R - 0.06, T + 0.1, R - 0.4, T + 0.1, R - 0.1, T - 0.36, '#fff1c7', true);
+    } else if (skin === 'robot') {
+      c.fillStyle = INK; c.fillRect(x - 0.04, T - 0.24, 0.08, 0.3);
+      c.fillStyle = SUN; c.fillRect(x - 0.12, T - 0.42, 0.24, 0.2); c.strokeRect(x - 0.12, T - 0.42, 0.24, 0.2);
+    } else if (skin === 'ninja') {
+      tri(R - 0.05, T + 0.1, R + 0.38, T + 0.0, R + 0.32, T + 0.26, '#e8372f', true); tri(R - 0.05, T + 0.2, R + 0.32, T + 0.36, R + 0.16, T + 0.54, '#e8372f', true);
+    }
+    if (col.rainbow && !stunned) {
+      var shift = calm() ? 0 : Math.floor(now / 110);
+      for (i = 0; i < 6; i++) { c.fillStyle = RAINBOW[(i + shift) % 6]; c.fillRect(L, T + i * SQ / 6, SQ, SQ / 6 + 0.02); }
+    } else {
+      c.fillStyle = stunned ? (Math.floor(now / 90) % 2 ? '#c9ced4' : col.light) : col.fill;
+      c.fillRect(L, T, SQ, SQ);
+    }
+    if (skin === 'ninja') {
+      c.fillStyle = '#e8372f'; c.fillRect(L, T + 0.1, SQ, 0.2);
+      c.fillStyle = '#f4cfa6'; c.fillRect(L + 0.1, y - 0.3, SQ - 0.2, 0.38);
+    } else if (skin === 'robot') {
+      c.fillStyle = '#22303c'; c.fillRect(L + 0.13, y - 0.37, SQ - 0.26, 0.44);
+      c.fillStyle = INK; for (i = 0; i < 4; i++) c.fillRect(x - 0.28 + i * 0.16, y + 0.26, 0.08, 0.2);
+      c.fillStyle = '#6a737d'; c.fillRect(L + 0.12, T + 0.1, 0.1, 0.1); c.fillRect(R - 0.22, T + 0.1, 0.1, 0.1);
+    } else if (skin === 'dragon') {
+      c.fillStyle = '#f7d21c'; c.fillRect(L, B - 0.32, SQ, 0.32);
+      c.fillStyle = INK; c.fillRect(x - 0.15, y + 0.12, 0.08, 0.08); c.fillRect(x + 0.07, y + 0.12, 0.08, 0.08);
+      tri(x - 0.4, B - 0.32, x - 0.18, B - 0.32, x - 0.29, B - 0.08, '#ffffff', true); tri(x + 0.4, B - 0.32, x + 0.18, B - 0.32, x + 0.29, B - 0.08, '#ffffff', true);
+    } else if (skin === 'tiger') {
+      for (i = 0; i < 3; i++) {
+        var sy = y - 0.3 + i * 0.36;
+        tri(L, sy - 0.09, L, sy + 0.09, L + 0.25, sy, INK); tri(R, sy - 0.09, R, sy + 0.09, R - 0.25, sy, INK);
+      }
+      tri(x - 0.09, T, x + 0.09, T, x, T + 0.24, INK);
+      c.fillStyle = '#ffffff'; c.fillRect(x - 0.3, y + 0.14, 0.6, 0.38);
+      tri(x - 0.11, y + 0.19, x + 0.11, y + 0.19, x, y + 0.32, '#ff7b93', true);
+      c.fillStyle = INK; c.fillRect(x - 0.025, y + 0.32, 0.05, 0.12);
+    }
+    c.strokeStyle = o.flash ? '#ffffff' : INK; c.lineWidth = 0.1;
+    c.strokeRect(L + 0.05, T + 0.05, SQ - 0.1, SQ - 0.1);
+    var ex = 0.27, ey = skin === 'tiger' ? -0.2 : skin === 'ninja' ? -0.11 : -0.14, es = skin === 'ninja' || skin === 'tiger' ? 0.3 : 0.34, ps = 0.19;
+    if (stunned) {
+      c.fillStyle = skin === 'robot' ? '#4de3ff' : INK; c.fillRect(x - ex - es / 2, y + ey - 0.05, es, 0.1); c.fillRect(x + ex - es / 2, y + ey - 0.05, es, 0.1);
+    } else if (skin === 'robot') {
+      c.fillStyle = '#4de3ff';
+      c.fillRect(x - ex - 0.12 + ux * 0.05, y + ey - 0.12 + uy * 0.05, 0.24, 0.24); c.fillRect(x + ex - 0.12 + ux * 0.05, y + ey - 0.12 + uy * 0.05, 0.24, 0.24);
+    } else {
+      c.fillStyle = skin === 'dragon' ? SUN : '#ffffff';
+      c.fillRect(x - ex - es / 2, y + ey - es / 2, es, es); c.fillRect(x + ex - es / 2, y + ey - es / 2, es, es);
+      var pxo = ux * 0.075, pyo = uy * 0.075, pw = skin === 'dragon' ? 0.1 : ps, ph = skin === 'dragon' ? 0.28 : ps;
+      c.fillStyle = '#111';
+      c.fillRect(x - ex - pw / 2 + pxo, y + ey - ph / 2 + (skin === 'dragon' ? 0 : pyo), pw, ph); c.fillRect(x + ex - pw / 2 + pxo, y + ey - ph / 2 + (skin === 'dragon' ? 0 : pyo), pw, ph);
+      if (skin === 'ninja') {
+        tri(x - ex - es / 2 - 0.02, y + ey - es / 2 - 0.03, x - ex + es / 2 + 0.02, y + ey - es / 2 - 0.03, x - ex + es / 2 + 0.02, y + ey - es / 2 + 0.11, '#232a3d');
+        tri(x + ex + es / 2 + 0.02, y + ey - es / 2 - 0.03, x + ex - es / 2 - 0.02, y + ey - es / 2 - 0.03, x + ex - es / 2 - 0.02, y + ey - es / 2 + 0.11, '#232a3d');
+      }
+    }
+  }
+  function drawSquare(s, now) {
+    if (s.dead) return;
+    var col = s.col, x = s.x, y = s.y, moving = g.state === 'playing' && s.stun <= 0;
+    var iced = s.ice > 0, stunned = s.stun > 0 && !iced, stag = s.stag > 0 && !s.isPlayer;
+    if (stunned && !calm()) { x += Math.sin(now / 28 + s.id) * 0.05; }
+    if (s.inv > 0 && !stunned && !iced && Math.floor(now / 80) % 2 === 0) ctx.globalAlpha = 0.45;
+    if (moving) {
+      var bx = -s.uy, by = s.ux, len = SQ * (s.boost > 0 ? 2.2 : 1.4);
+      ctx.fillStyle = s.boost > 0 ? SUN : tint(col, now, true);
+      ctx.beginPath(); ctx.moveTo(x + bx * HALF * 0.92, y + by * HALF * 0.92); ctx.lineTo(x - bx * HALF * 0.92, y - by * HALF * 0.92);
+      ctx.lineTo(x - s.ux * len, y - s.uy * len); ctx.closePath(); ctx.fill();
+      if (g.mode === 'battle' && !g.level.gun) {
+        ctx.fillStyle = '#f4f6f8'; ctx.strokeStyle = INK; ctx.lineWidth = 0.07; ctx.lineJoin = 'round';
+        var reach = HALF * (Math.abs(s.ux) + Math.abs(s.uy)) + 0.34, root = reach - 0.62;
+        ctx.beginPath(); ctx.moveTo(x + s.ux * root + bx * 0.3, y + s.uy * root + by * 0.3);
+        ctx.lineTo(x + s.ux * reach, y + s.uy * reach); ctx.lineTo(x + s.ux * root - bx * 0.3, y + s.uy * root - by * 0.3);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      }
+    }
+    drawFace(ctx, col, x, y, now, { stunned: stunned, flash: stag && Math.floor(now / 90) % 2 === 1, ux: s.ux, uy: s.uy });
+    ctx.globalAlpha = 1;
+    if (iced) iceBlock(x, y);
+    if (s.gun) drawGun(s.x + Math.cos(s.gun.aim) * 0.42, s.y + 0.3 + Math.sin(s.gun.aim) * 0.42, s.gun.aim, 0.7, 1);
+    if (stunned) {
+      for (var k = 0; k < 3; k++) {
+        var a = now / 160 + k * 2.094;
+        ctx.fillStyle = SUN; ctx.fillRect(x + Math.cos(a) * 0.7 - 0.09, y - HALF - 0.32 + Math.sin(a) * 0.14 - 0.09, 0.18, 0.18);
+      }
+    }
+    if (g.mode === 'battle') {
+      var n = s.maxHp, pw = 0.26, gap = 0.1, tot = n * pw + (n - 1) * gap, py = y - HALF - (col.skin && col.skin !== 'ninja' ? 0.88 : 0.62);
+      if (n > 5) {
+        ctx.fillStyle = 'rgba(255,251,227,.7)'; ctx.fillRect(s.x - HALF, py, SQ, pw);
+        ctx.fillStyle = tint(col, now); ctx.fillRect(s.x - HALF, py, SQ * Math.max(0, s.hp) / n, pw);
+        ctx.strokeStyle = INK; ctx.lineWidth = 0.06; ctx.strokeRect(s.x - HALF, py, SQ, pw);
+      } else for (var h = 0; h < n; h++) {
+        var px = s.x - tot / 2 + h * (pw + gap);
+        ctx.fillStyle = h < s.hp ? tint(col, now) : 'rgba(255,251,227,.55)'; ctx.fillRect(px, py, pw, pw);
+        ctx.strokeStyle = INK; ctx.lineWidth = 0.06; ctx.strokeRect(px, py, pw, pw);
+      }
+    }
+  }
+  function draw(now) {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    if (!g || !base) return;
+    var c = view.c, p = g.squares[0], i, q;
+    off.x = shake > 0 ? Math.round((Math.random() * 2 - 1) * shake * c * 0.5) : 0;
+    off.y = shake > 0 ? Math.round((Math.random() * 2 - 1) * shake * c * 0.5) : 0;
+    ctx.drawImage(base, view.ox - base.pad + off.x, view.oy - base.pad + off.y);
+    ctx.setTransform(c, 0, 0, c, view.ox + off.x, view.oy + off.y);
+    drawTiles(now);
+    drawSaws();
+    drawGuns(now);
+    drawHeats(now);
+    if (g.boss) drawBossUnder(now);
+
+    var aiming = (ptr.active || keySlow) && g.state === 'playing' && !g.over && !p.dead && p.stun <= 0;
+    if (aiming) {
+      predictPath(g, p, 7.5, pathBuf);
+      for (i = 0; i < pathBuf.length; i += 2) {
+        var fade = 1 - i / pathBuf.length;
+        ctx.globalAlpha = 0.25 + 0.6 * fade;
+        ctx.fillStyle = INK; ctx.fillRect(pathBuf[i] - 0.13, pathBuf[i + 1] - 0.13, 0.26, 0.26);
+        ctx.fillStyle = PAPER; ctx.fillRect(pathBuf[i] - 0.08, pathBuf[i + 1] - 0.08, 0.16, 0.16);
+      }
+      ctx.globalAlpha = 1;
+    }
+    for (i = g.squares.length - 1; i >= 0; i--) drawSquare(g.squares[i], now);
+    drawBullets();
+    if (g.boss) { drawGhosts(now); if (!g.boss.duel || g.boss.hp > 0) drawBoss(now); drawShards(); drawSparks(now); drawBossFx(); }
+
+    for (i = 0; i < rings.length; i++) {
+      q = rings[i]; var k = q.life / q.max;
+      ctx.strokeStyle = 'rgba(255,138,30,' + (1 - k) + ')'; ctx.lineWidth = 0.35 * (1 - k) + 0.05;
+      ctx.beginPath(); ctx.arc(q.x, q.y, q.r * (0.25 + 0.75 * k), 0, 6.283); ctx.stroke();
+    }
+    for (i = 0; i < parts.length; i++) {
+      q = parts[i]; var sz = q.size * (1 - q.life / q.max);
+      ctx.fillStyle = q.color; ctx.fillRect(q.x - sz / 2, q.y - sz / 2, sz, sz);
+    }
+    for (i = 0; i < pops.length; i++) {
+      q = pops[i]; ctx.globalAlpha = Math.min(1, (q.max - q.life) * 3);
+      label(q.text, q.x, q.y, 0.62, q.color, INK);
+    }
+    ctx.globalAlpha = 1;
+    if (g.state === 'ready' && !p.dead) {
+      var bob = calm() ? 0 : Math.sin(now / 220) * 0.14, ty = p.y - HALF - 0.5 + bob;
+      ctx.fillStyle = INK; ctx.beginPath(); ctx.moveTo(p.x - 0.34, ty - 0.4); ctx.lineTo(p.x + 0.34, ty - 0.4); ctx.lineTo(p.x, ty); ctx.closePath(); ctx.fill();
+      label('YOU', p.x, ty - 0.86, 0.66, PAPER, INK);
+    }
+
+    /* screen-space: slow-motion vignette and the drag stick */
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    var slow = (1 - ts) / 0.75;
+    if (slow > 0.02) {
+      var R = Math.max(cv.width, cv.height) * 0.72, vg = ctx.createRadialGradient(cv.width / 2, cv.height / 2, R * 0.45, cv.width / 2, cv.height / 2, R);
+      vg.addColorStop(0, 'rgba(18,48,26,0)'); vg.addColorStop(1, 'rgba(18,48,26,' + (0.5 * slow).toFixed(3) + ')');
+      ctx.fillStyle = vg; ctx.fillRect(0, 0, cv.width, cv.height);
+    }
+    if (ptr.active) {
+      var ax = ptr.ax * dpr, ay = ptr.ay * dpr, kx = ptr.x * dpr, ky = ptr.y * dpr;
+      ctx.lineWidth = 2.5 * dpr; ctx.strokeStyle = 'rgba(18,48,26,.5)'; ctx.fillStyle = 'rgba(255,251,227,.14)';
+      ctx.beginPath(); ctx.arc(ax, ay, 46 * dpr, 0, 6.283); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(kx, ky); ctx.stroke();
+      ctx.fillStyle = PAPER; ctx.strokeStyle = INK;
+      ctx.beginPath(); ctx.arc(kx, ky, 12 * dpr, 0, 6.283); ctx.fill(); ctx.stroke();
+    }
+  }
+
+  /* ----- HUD ----- */
+  function updateHud() {
+    var p = g.squares[0], t = g.time.toFixed(1);
+    if (t !== hudCache.time) { hudCache.time = t; $('hudTime').textContent = t; }
+    var mode;
+    if (g.mode === 'battle') {
+      var left = 0; for (var i = 1; i < g.squares.length; i++) if (!g.squares[i].dead) left++;
+      mode = g.level.duel ? 'Duel · ' + Math.max(0, g.boss.hp) + ' to go' :
+        (g.level.gun ? 'Guns' : g.level.heat ? 'Heat' : 'Battle') + ' · ' + left + ' left';
+      if (p.hp !== hudCache.lives) {
+        hudCache.lives = p.hp;
+        var el = $('hudLives'), html = '';
+        if (p.maxHp > 5) html = '<span class="bar"><b style="width:' + Math.round(100 * Math.max(0, p.hp) / p.maxHp) + '%"></b></span><span class="hpn">' + Math.max(0, p.hp) + '</span>';
+        else for (var k = 0; k < p.maxHp; k++) html += '<i' + (k < p.hp ? '' : ' class="gone"') + '></i>';
+        el.innerHTML = html; el.setAttribute('aria-label', Math.max(0, p.hp) + ' of ' + p.maxHp + ' lives');
+      }
+    } else mode = g.boss ? 'Boss · ' + g.boss.name : p.stun > 0 ? 'Race · stunned' : 'Race';
+    if (mode !== hudCache.mode) { hudCache.mode = mode; $('hudMode').textContent = mode; }
+  }
+
+  /* ----- overlay cards ----- */
+  function showOverlay(o) {
+    $('ovKicker').textContent = o.kicker; $('ovTitle').textContent = o.title; $('ovText').textContent = o.text;
+    var box = $('ovActions'); box.textContent = '';
+    o.actions.forEach(function (a, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn' + (i === 0 ? ' primary' : ''); b.id = 'ov-action-' + i; b.textContent = a[0];
+      b.addEventListener('click', a[1]); box.appendChild(b);
+    });
+    $('overlay').hidden = false;
+    if (!coarse) { try { box.firstChild.focus(); } catch (e) { /* ignore */ } }
+  }
+  function kicker() { return 'Level ' + (lvl + 1) + ' · ' + KIND[kindOf(LEVELS[lvl])]; }
+  function pause() {
+    if (screen !== 'game' || !g || g.over || paused) return;
+    paused = true; ptr.id = null; ptr.active = false; keys = {}; keySlow = false;
+    showPause();
+  }
+  function showPause() {
+    showOverlay({
+      kicker: kicker(), title: 'Paused', text: LEVELS[lvl].tip,
+      actions: [
+        ['Resume', function () { paused = false; $('overlay').hidden = true; lastT = performance.now(); }],
+        ['Restart level', function () { startLevel(lvl); }],
+        [store.muted ? 'Sound off' : 'Sound on', function () { toggleSound(); showPause(); }],
+        ['Levels', showMenu]
+      ]
+    });
+  }
+  function onOver() {
+    ptr.id = null; ptr.active = false; keys = {}; keySlow = false;
+    if (g.over.win) { tone(523, 0, 0.12, 'square', 0.06); tone(659, 0, 0.12, 'square', 0.06, 0.11); tone(784, 0, 0.12, 'square', 0.06, 0.22); tone(1047, 0, 0.3, 'square', 0.06, 0.33); }
+    else { tone(330, 0, 0.16, 'sawtooth', 0.06); tone(262, 0, 0.16, 'sawtooth', 0.06, 0.15); tone(196, 0, 0.36, 'sawtooth', 0.06, 0.3); }
+    if (g.over.win) {
+      var p = g.squares[0];
+      burst(p.x, p.y, hue(p.col), 26, 10, 0.3); burst(p.x, p.y, SUN, 18, 8, 0.24);
+    }
+  }
+  function showResult() {
+    resultShown = true;
+    var L = LEVELS[lvl], ov = g.over, t = Math.round(g.time * 10) / 10, last = lvl === LEVELS.length - 1, title, text, actions;
+    var again = function () { startLevel(lvl); };
+    if (ov.win) {
+      var prev = store.best[lvl], isBest = !(prev > 0) || t < prev;
+      if (isBest) { store.best[lvl] = t; persist(); }
+      title = L.duel ? 'You beat ' + L.boss.name : L.boss ? 'You got past ' + L.boss.name : L.mode === 'race' ? 'First across' : 'Last square standing';
+      text = 'Done in ' + t.toFixed(1) + ' s.' + (prev > 0 ? (isBest ? ' New best, down from ' + prev.toFixed(1) + ' s.' : ' Your best is ' + prev.toFixed(1) + ' s.') : '') +
+        (last ? ' That was the final level.' : '');
+      actions = last ? [['Back to levels', showMenu], ['Play again', again]] :
+        [['Next level', function () { startLevel(lvl + 1); }], ['Play again', again], ['Levels', showMenu]];
+    } else {
+      if (ov.reason === 'dead') { title = 'Knocked out'; text = L.duel ? (L.boss.type === 'frost' ? 'The ice took your last life. When the red lines point at you, slip between them or get right outside them before he throws.' : 'The sparks took your last life. When the red strip points at you, steer out of it before he fires.') : L.gun ? 'You ran out of lives. Get to the gun first, or step out of the line of fire.' : 'You ran out of lives. Face rivals nose-first and keep clear of hazards.'; }
+      else if (ov.reason === 'boss') {
+        title = { volt: 'Zapped by ', frost: 'Frozen by ', cop: 'Busted by ' }[ov.how] + L.boss.name;
+        text = { volt: 'You were inside the ring when it flashed. Wait outside it, and go right after a flash.',
+          frost: 'An ice shard hit you. When the three red lines point at you, move off them before Frost throws.',
+          cop: 'Sarge caught you. Keep away while his light is flashing, and go past him once he stops for breath.' }[ov.how];
+      }
+      else if (ov.reason === 'burn') { title = ov.who.col.name + ' melted you'; text = 'A rival reached the flame first. Get to it before they do, or keep well clear of the ring.'; }
+      else { title = ov.who.col.name + ' got there first'; text = 'A rival reached the red zone ahead of you after ' + t.toFixed(1) + ' s.'; }
+      actions = [['Try again', again], ['Levels', showMenu]];
+    }
+    showOverlay({ kicker: kicker(), title: title, text: text, actions: actions });
+  }
+
+  /* ----- input: drag anywhere to steer, time slows while held ----- */
+  var DEAD = 9, REACH = 56;
+  cv.addEventListener('pointerdown', function (e) {
+    if (screen !== 'game' || paused || !g || g.over || ptr.id !== null) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    e.preventDefault();
+    ptr.id = e.pointerId; ptr.active = true; ptr.ax = ptr.x = e.clientX; ptr.ay = ptr.y = e.clientY;
+    try { cv.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    ac();
+    if (g.state === 'ready') begin();
+  });
+  cv.addEventListener('pointermove', function (e) {
+    if (e.pointerId !== ptr.id || !g) return;
+    ptr.x = e.clientX; ptr.y = e.clientY;
+    var dx = ptr.x - ptr.ax, dy = ptr.y - ptr.ay, d = Math.hypot(dx, dy);
+    if (d < DEAD) return;
+    var p = g.squares[0];
+    if (!p.dead && !g.over) { p.ux = dx / d; p.uy = dy / d; }
+    if (d > REACH) { ptr.ax = ptr.x - dx / d * REACH; ptr.ay = ptr.y - dy / d * REACH; }
+  });
+  function release(e) { if (e.pointerId === ptr.id) { ptr.id = null; ptr.active = false; ac(); } }
+  cv.addEventListener('pointerup', release);
+  cv.addEventListener('pointercancel', release);
+  cv.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  var KEYMAP = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], a: [-1, 0], d: [1, 0], w: [0, -1], s: [0, 1] };
+  function applyKeys() {
+    var x = 0, y = 0, n = 0, k;
+    for (k in keys) { x += keys[k][0]; y += keys[k][1]; n++; }
+    keySlow = n > 0;
+    var m = Math.hypot(x, y);
+    if (m > 0 && g && !g.over && !g.squares[0].dead) { g.squares[0].ux = x / m; g.squares[0].uy = y / m; }
+  }
+  window.addEventListener('keydown', function (e) {
+    if (screen !== 'game' || !g) return;
+    if (e.key === 'Escape' || e.key === 'p' || e.key === 'P') { if (paused) { paused = false; $('overlay').hidden = true; lastT = performance.now(); } else pause(); return; }
+    var k = e.key.length === 1 ? e.key.toLowerCase() : e.key, v = KEYMAP[k];
+    if (!v || paused || g.over) return;
+    e.preventDefault();
+    keys[k] = v; applyKeys(); ac();
+    if (g.state === 'ready') begin();
+  });
+  window.addEventListener('keyup', function (e) {
+    var k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (keys[k]) { delete keys[k]; applyKeys(); }
+  });
+  window.addEventListener('blur', function () { keys = {}; keySlow = false; });
+  window.addEventListener('resize', layout);
+  document.addEventListener('visibilitychange', function () { if (document.hidden && g && g.state === 'playing') pause(); });
+
+  /* ----- main loop ----- */
+  function frame(now) {
+    requestAnimationFrame(frame);
+    var dt = Math.min(0.05, Math.max(0, (now - lastT) / 1000)); lastT = now;
+    if (screen !== 'game' || !g) return;
+    var held = (ptr.active || keySlow) && g.state === 'playing' && !g.over && !paused;
+    var target = held ? 0.25 : 1;
+    ts += (target - ts) * Math.min(1, dt * 18);
+    if (Math.abs(target - ts) < 0.004) ts = target;
+    var simDt = 0;
+    if (!paused && g.state === 'playing' && !resultShown) {
+      simDt = dt * ts * (g.over ? 0.4 : 1);
+      acc += simDt;
+      var n = 0;
+      while (acc >= STEP && n < 48) { stepGame(g, STEP); acc -= STEP; n++; }
+      if (n === 48) acc = 0;
+      handleEvents();
+      if (g.over) {
+        if (!overSeen) { overSeen = true; onOver(); }
+        overT += dt;
+        if (overT > 1.1) showResult();
+      }
+    }
+    if (!paused) updateFx(g.state === 'playing' && !resultShown ? simDt : dt);
+    draw(now);
+    updateHud();
+  }
+
+  /* ----- boot (keeps your place if the page is updated while open) ----- */
+  var hot = window.claude && window.claude.hot;
+  function boot(data) {
+    buildMenu();
+    if (data && data.screen === 'game' && LEVELS[data.lvl]) startLevel(data.lvl); else showMenu();
+    requestAnimationFrame(frame);
+  }
+  if (hot && hot.snapshot) { try { hot.snapshot(function () { return { screen: screen, lvl: lvl }; }); } catch (e) { /* ignore */ } }
+  if (hot && hot.ready) hot.ready(boot); else boot((hot && hot.data) || {});
+})();
+
+})();
+</script>
+
+</body></html>
