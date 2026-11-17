@@ -23,6 +23,7 @@ src/sim/                GAME RULES. Pure JS, no DOM, deterministic from a seed. 
   game.js               makeGame(level, opts) builds the state g; stepGame(g, dt) advances it
   world.js              tiles, collision (moveAxis), damage (hurt), crates/TNT, saws, predictPath
   guns.js heat.js       gun pickups + bullets; heat ring pickups
+  goodies.js            stars ('*'), bubble shields ('B'), portals (level.portals)
   boss.js duel.js       boss races (volt/frost/cop) and boss duels
 src/levels/             one file per level (NN-name.js) + index.js (the play order)
 src/ui/                 everything that touches the browser
@@ -36,6 +37,7 @@ src/ui/                 everything that touches the browser
   render/               canvas drawing: index.js (layout, cached level picture, draw order), tiles,
                         pickups (guns/flames/bullets), squares (drawFace is shared with the menu), boss, thumb
 tests/                  node:test suites
+scripts/                build.mjs, dev.mjs, playtest.mjs (try one level file: numbers, bots, screenshot), lib/ (level rules + reachability)
 docs/LEVELS.md          map legend and every level field
 ```
 
@@ -50,10 +52,11 @@ docs/LEVELS.md          map legend and every level field
 - Every tuning number goes in `sim/constants.js` (or in the level file if only one level uses it). No magic numbers buried in step code.
 - Code style: ES5-ish (`var`, `function`) to match the existing code. Small comments that explain *why*.
 - Modules export named functions. `menu.js` ↔ `play.js` import each other. That's fine because they only call each other at runtime.
+- Shields: anything that damages or knocks out a square must go through `hurt()` or `knockOut()` so bubble shields work. Heat-ring melting is the one deliberate exception.
 - Respect `calm()` (prefers-reduced-motion) for anything that shakes, flickers or spins.
 
 ## Common tasks
-- **Add a level:** create `src/levels/NN-name.js` and append it to the end of the list in `src/levels/index.js`. Don't insert it in the middle: saved best times are stored by level index. Then run `npm test`; it validates the map. Field reference: `docs/LEVELS.md`. Also update the hard-coded "thirty-four levels" in the `index.html` lede.
+- **Add a level:** create `src/levels/NN-name.js`, try it with `node scripts/playtest.mjs src/levels/NN-name.js --shot`, then append it to the end of the list in `src/levels/index.js`. Don't insert it in the middle: saved best times and stars are stored by level index. `npm test` validates the map and reachability. Field reference: `docs/LEVELS.md`. Levels 35+ are made for a young child: keep them forgiving (bubbles before danger, slow rivals, naive bot wins most runs).
 - **Tune difficulty:** global values are in `src/sim/constants.js`, per-level values are in the level file (`aiSpeed`, `enemyHp`, boss fields).
 - **New tile type:** pick a character. Then handle it in `sim/world.js` (`blocks`/`moveAxis`), add it to `makeGame` in `sim/game.js` if it changes over the round (the `dyn` list), draw it in `ui/render/tiles.js` (or in `buildBase` in `ui/render/index.js` if it never changes), give it a colour in `ui/render/thumb.js`, and add it to `TILES` in `tests/levels.test.js`.
 - **New boss type:** set up its state in `makeGame`, give it behaviour in `sim/boss.js#stepBoss`, draw it in `ui/render/boss.js` (`drawBoss` + `drawBossUnder`), add its words/colours to `OUTWORD/OUTCOL/BOSSC` in `ui/theme.js` and its result text to `showResult`, and add it to `BOSS_TYPES` in the tests.

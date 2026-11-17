@@ -2,7 +2,13 @@
 
 Each level is a plain object in `src/levels/NN-name.js` (`export default { … }`). The play order is the list in
 `src/levels/index.js`. **Append new levels at the end**: saved best times are stored by position in that list.
-`npm test` checks every level against the rules below.
+`npm test` checks every level against the rules below (`scripts/lib/validate-level.js`) and that the player can reach the finish, every star and every bubble.
+
+## Playtesting a level
+```bash
+node scripts/playtest.mjs src/levels/35-my-level.js --shot
+```
+Works before the level is added to `index.js`. It prints rule problems, reachability, how fast rivals finish, and how a **naive bot** does (races: follows the shortest path and never waits for the boss; duels: drives straight at the boss and never dodges). `--shot` saves a screenshot from the real game (needs Playwright). The kid-friendly levels (35+) aim for the naive bot winning at least ~80% of runs.
 
 ## Map legend
 `map` is an array of equal-length strings, at most 20 wide × 30 tall (the size of the menu thumbnail). The outer border must be all `#`.
@@ -18,6 +24,8 @@ Each level is a plain object in `src/levels/NN-name.js` (`export default { … }
 | `+` | boost pad |
 | `d` `u` `l` `r` | one-way gate: lets squares through moving down / up / left / right |
 | `G` | gun pickup (gun rounds) |
+| `*` | star: the player collects it by touching it (a bonus, counted on the HUD and result card) |
+| `B` | bubble shield pickup: absorbs the player's next hit or boss knockout, grows back after 5 s |
 | `H` | heat-ring flame (heat rounds) |
 | `1` | the player's spawn |
 | `2`–`7` | rival spawns (number them with no gaps) |
@@ -37,6 +45,7 @@ Coordinates elsewhere (saws, bosses) are in tiles. `x = 0` is the left edge of t
 | `heat: true` | battle | heat round: whoever has the flame melts anyone its ring touches |
 | `flames` | heat | moving flames: `[[x1, y1, x2, y2, speed], …]` |
 | `saws` | any | `[[x1, y1, x2, y2, speed, radius = 0.8, startPhase 0–1], …]`. The saw slides back and forth along the line. |
+| `portals` | any | `[[ax, ay, bx, by], …]`: whole-tile column/row of each end of a pair. Any square whose centre enters one end comes out of the other with the same heading. Each end and its 8 neighbours must be open floor (` `, `*`, `F`, `+`). |
 | `boss` | any | see below |
 | `duel: true` | battle | boss duel: just the player and the boss (also set `boss.duel`) |
 
