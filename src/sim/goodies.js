@@ -1,4 +1,4 @@
-import { BUBBLE_BACK, EPS, HALF } from './constants.js';
+import { BUBBLE_BACK, EPS, HALF, WARP_COOL } from './constants.js';
 
 /* ----- goodies: stars to collect (player only), bubble shields (player only), portals (everyone) -----
    '*' tiles stay in the grid until collected. Bubbles come from 'B' tiles. Portals come from level.portals:
@@ -33,10 +33,18 @@ export function stepGoodies(g, dt) {
 }
 
 /* move a square (or the path-preview ghost) through a portal if its centre is on one. s.warp remembers the tile it
-   arrived on, so it does not bounce straight back; it clears once the square has left that tile. Returns true on a jump. */
+   arrived on, so it does not bounce straight back; it clears once the square is 1.5 tiles clear of it. s.warpT (WARP_COOL)
+   also blocks any jump for a moment, so a bounce off a wall beside the exit cannot send it straight back. Returns true on a jump. */
 export function warp(g, s) {
   var cx = Math.floor(s.x), cy = Math.floor(s.y), here = cy * g.W + cx, k, p, tx = -1, ty = -1;
-  if (s.warp >= 0) { if (s.warp === here) return false; s.warp = -1; }
+  if (s.warp >= 0) {
+    /* the exit stays locked until the square is 1.5 tiles clear of it, so bouncing between walls beside it cannot
+       re-trigger it. Other ends are 2+ tiles away (validate-level), so they still work from inside that range. */
+    var ax = s.warp % g.W + 0.5, ay = Math.floor(s.warp / g.W) + 0.5;
+    if (Math.max(Math.abs(s.x - ax), Math.abs(s.y - ay)) >= 1.5) s.warp = -1;
+    else if (here === s.warp) return false;
+  }
+  if (s.warpT > 0) return false;
   for (k = 0; k < g.portals.length; k++) {
     p = g.portals[k];
     if (cx === p.ax && cy === p.ay) { tx = p.bx; ty = p.by; break; }
@@ -44,6 +52,6 @@ export function warp(g, s) {
   }
   if (tx < 0) return false;
   s.wx = s.x; s.wy = s.y;
-  s.x = tx + 0.5; s.y = ty + 0.5; s.warp = ty * g.W + tx;
+  s.x = tx + 0.5; s.y = ty + 0.5; s.warp = ty * g.W + tx; s.warpT = WARP_COOL;
   return true;
 }

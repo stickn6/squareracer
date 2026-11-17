@@ -15,3 +15,5 @@ export const ICE_TELL = 0.8, ICE_FREEZE = 0.7, ICE_SPEED = 8, ICE_GAPS = [2.1, 2
 export const GUN_SHOTS = 3, GUN_FIRST = 0.4, GUN_GAP = 0.3, GUN_COOL = 1.0, BULLET_SPEED = 20, BULLET_INV = 0.45;
 /* goodies: a bubble shield comes back BUBBLE_BACK s after it is taken; a popped shield leaves SHIELD_INV s of safety */
 export const BUBBLE_BACK = 5, SHIELD_INV = 1.2;
+/* after a portal jump a square cannot jump again for WARP_COOL s, so bouncing off a wall next to the exit cannot loop it */
+export const WARP_COOL = 0.5;

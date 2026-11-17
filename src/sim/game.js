@@ -57,7 +57,7 @@ export function makeGame(level, opts) {
       id: i, isPlayer: isP, x: spawns[i].x, y: spawns[i].y, ux: 0, uy: 0,
       speed: isP ? PLAYER_SPEED : level.aiSpeed,
       hp: isP ? (level.mode === 'battle' && opts.playerHp > 0 ? opts.playerHp : 3) : (level.enemyHp || 3), inv: 0, boost: 0, stun: 0, ice: 0, stag: 0, tink: 0, gun: null, heat: null, burnedBy: null, outBy: null, dead: false, finT: -1,
-      shield: false, safe: 0, warp: -1
+      shield: false, safe: 0, warp: -1, warpT: 0
     };
     s.maxHp = s.hp;
     if (isP) {
@@ -98,6 +98,7 @@ export function stepGame(g, dt) {
     if (s.dead) continue;
     if (s.inv > 0) s.inv = Math.max(0, s.inv - dt);
     if (s.safe > 0) s.safe = Math.max(0, s.safe - dt);
+    if (s.warpT > 0) s.warpT = Math.max(0, s.warpT - dt);
     if (s.ice > 0) s.ice = Math.max(0, s.ice - dt);
     if (s.boost > 0) s.boost = Math.max(0, s.boost - dt);
     if (s.stag > 0) s.stag = Math.max(0, s.stag - dt);

@@ -132,7 +132,7 @@ export function popShield(g, s) {
 
 /* dotted preview of where the player is headed */
 export function predictPath(g, s, dist, out) {
-  var gh = { x: s.x, y: s.y, ux: s.ux, uy: s.uy, warp: s.warp, ghost: true }, step = 0.12, n = Math.round(dist / step), b = g.boss;
+  var gh = { x: s.x, y: s.y, ux: s.ux, uy: s.uy, warp: s.warp, warpT: s.warpT }, step = 0.12, n = Math.round(dist / step), b = g.boss;
   out.length = 0;
   for (var i = 1; i <= n; i++) {
     var dx = gh.ux * step, dy = gh.uy * step;
@@ -145,6 +145,8 @@ export function predictPath(g, s, dist, out) {
         else { gh.uy = (gh.y >= b.y ? 1 : -1) * Math.abs(gh.uy); gh.y += (gh.y >= b.y ? 1 : -1) * oy; }
       }
     }
+    /* the ghost's portal cooldown runs down with the distance it travels, at the square's speed */
+    if (gh.warpT > 0) gh.warpT -= step / (s.speed || 1);
     if (g.portals.length) warp(g, gh);
     if (i % 5 === 0) out.push(gh.x, gh.y);
   }

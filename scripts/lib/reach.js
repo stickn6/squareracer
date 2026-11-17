@@ -34,32 +34,30 @@ function world(L) {
 }
 
 const key = (x, y) => x + ',' + y;
+/* a search state is a block, plus (in forced mode) whether the square just arrived there through a portal:
+   the same block can be "must jump" when driven onto and "free to move" when arrived at by a jump */
+const stateKey = (x, y, w) => key(x, y) + (w ? 'w' : '');
+export const parseKey = (k) => k.replace('w', '').split(',').map(Number);
 
-/* breadth-first search over blocks from the blocks around tile (tx, ty). Returns dist and prev maps keyed "x,y". */
+/* breadth-first search over blocks from the blocks around tile (tx, ty). Returns dist and prev maps keyed by state. */
 export function search(L, tx, ty, { forced = false, startWarped = false } = {}) {
   const w = world(L);
-  const dist = new Map(), prev = new Map(), warped = new Set(), q = [];
-  for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
-    const x = tx + dx, y = ty + dy, k = key(x, y);
-    if (w.block(x, y) && !dist.has(k)) { dist.set(k, 0); prev.set(k, null); if (startWarped) warped.add(k); q.push([x, y]); }
-  }
+  const dist = new Map(), prev = new Map(), q = [];
+  const add = (x, y, warped, d, from) => {
+    const k = stateKey(x, y, forced && warped);
+    if (dist.has(k) || !w.block(x, y)) return;
+    dist.set(k, d); prev.set(k, from); q.push([x, y, forced && warped, k]);
+  };
+  for (const [dx, dy] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) add(tx + dx, ty + dy, startWarped, 0, null);
   while (q.length) {
-    const [x, y] = q.shift(), k = key(x, y), d = dist.get(k);
-    const next = [];
+    const [x, y, warped, k] = q.shift(), d = dist.get(k);
     const centreEnd = w.ends.find(([ax, ay]) => ax === x + 1 && ay === y + 1);
-    if (forced && centreEnd && !warped.has(k)) {
-      next.push([centreEnd[2] - 1, centreEnd[3] - 1, centreEnd]);
-    } else {
-      for (const [dx, dy] of DIRS) if (w.canStep(x, y, dx, dy)) next.push([x + dx, y + dy, null]);
-      if (!forced) for (const e of w.ends) if (e[0] >= x && e[0] <= x + 1 && e[1] >= y && e[1] <= y + 1) next.push([e[2] - 1, e[3] - 1, e]);
+    if (forced && centreEnd && !warped) {
+      add(centreEnd[2] - 1, centreEnd[3] - 1, true, d + 1, { from: k, via: centreEnd });
+      continue;
     }
-    for (const [nx, ny, via] of next) {
-      const nk = key(nx, ny);
-      if (dist.has(nk) || !w.block(nx, ny)) continue;
-      dist.set(nk, d + 1); prev.set(nk, { from: k, via });
-      if (via) warped.add(nk);
-      q.push([nx, ny]);
-    }
+    for (const [dx, dy] of DIRS) if (w.canStep(x, y, dx, dy)) add(x + dx, y + dy, false, d + 1, { from: k, via: null });
+    if (!forced) for (const e of w.ends) if (e[0] >= x && e[0] <= x + 1 && e[1] >= y && e[1] <= y + 1) add(e[2] - 1, e[3] - 1, true, d + 1, { from: k, via: e });
   }
   return { dist, prev, world: w };
 }
@@ -72,7 +70,7 @@ export function reach(L) {
   const touched = new Set();
   let best = null;
   for (const [k, d] of dist) {
-    const [x, y] = k.split(',').map(Number);
+    const [x, y] = parseKey(k);
     for (const [tx, ty] of w.tilesOf(x, y)) {
       touched.add(key(tx, ty));
       if (w.at(tx, ty) === 'F' && (best === null || d < best)) best = d;
@@ -96,13 +94,13 @@ export function routeToFinish(L, tx, ty, startWarped) {
   const { dist, prev, world: w } = search(L, tx, ty, { forced: true, startWarped });
   let end = null, bd = Infinity;
   for (const [k, d] of dist) {
-    const [x, y] = k.split(',').map(Number);
+    const [x, y] = parseKey(k);
     if (d < bd && w.tilesOf(x, y).some(([a, b]) => w.at(a, b) === 'F')) { bd = d; end = k; }
   }
   if (!end) return null;
   const pts = [];
   for (let k = end; k; ) {
-    const [x, y] = k.split(',').map(Number), p = prev.get(k);
+    const [x, y] = parseKey(k), p = prev.get(k);
     pts.push({ x: x + 1, y: y + 1 });
     if (p && p.via) pts.push({ x: p.via[0] + 0.5, y: p.via[1] + 0.5, portal: true });
     k = p ? p.from : null;

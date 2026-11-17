@@ -16,7 +16,7 @@ const files = args.filter((a) => a.endsWith('.js'));
 const shot = args.includes('--shot');
 const seedsArg = args.indexOf('--seeds');
 const SEEDS = seedsArg >= 0 ? Number(args[seedsArg + 1]) : 30;
-if (!(SEEDS > 0)) { console.error('--seeds needs a positive number'); process.exit(1); }
+if (!Number.isInteger(SEEDS) || SEEDS <= 0 || SEEDS > 1000) { console.error('--seeds needs a whole number from 1 to 1000'); process.exit(1); }
 const STEP = 1 / 240;
 if (!files.length) { console.error('usage: node scripts/playtest.mjs <level file>... [--shot] [--seeds N]'); process.exit(1); }
 

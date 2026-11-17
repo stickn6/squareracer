@@ -23,7 +23,8 @@ export function updateHud() {
   var st = app.g.stars, stars = st.total ? '★' + st.got + '/' + st.total : '';
   if (stars !== hudCache.stars) {
     hudCache.stars = stars; var se = $('hudStars');
-    se.hidden = !stars; se.textContent = stars; se.setAttribute('aria-label', st.got + ' of ' + st.total + ' stars');
+    se.hidden = !stars;
+    se.innerHTML = stars ? '★' + st.got + '<span class="tot">/' + st.total + '</span>' : ''; se.setAttribute('aria-label', st.got + ' of ' + st.total + ' stars');
   }
   if (mode !== hudCache.mode) { hudCache.mode = mode; $('hudMode').textContent = mode; }
 }

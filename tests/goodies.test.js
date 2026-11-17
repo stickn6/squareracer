@@ -136,6 +136,8 @@ test('portal ends must be 2+ tiles apart', () => {
 test('spawns need a clear tile all round', () => {
   const L = base(['########', '#      #', '#  #   #', '#  1 F #', '#      #', '# 2    #', '########']);
   assert.ok(validateLevel(L).some((e) => e.includes('spawn 1')));
+  const diag = base(['########', '#      #', '#   #  #', '#  1 F #', '#      #', '# 2    #', '########']);
+  assert.ok(validateLevel(diag).some((e) => e.includes('spawn 1')), 'a diagonal neighbour counts too');
 });
 
 test('reach: one-way gates block only their own axis', () => {
@@ -178,4 +180,39 @@ test('reach and the bot route both use portals', () => {
   assert.equal(reach(L).finish, true);
   const pts = routeToFinish(L, 3, 2, false);
   assert.ok(pts && pts.some((q) => q.portal), 'route goes through the portal');
+});
+
+test('bot route: a block reached on foot and by a portal jump keeps both states', () => {
+  /* the only way to the finish is: drive onto the swirl at (11,4), come out at (3,20), step off, drive back on,
+     come out at (11,4) free to move, then go right. Walking onto (11,4) first must not hide that later state. */
+  const map = [
+    '####################', '#     ####         #', '# 1   ####         #', '#                  #', '#                  #',
+    '#     ####       F #', '#     ####       F #', '#     ####         #', '#     ####         #', '#     ##############',
+    '#     ##############', '#     ##############', '#  2  ##############', '#     ##############', '#     ##############',
+    '#     ##############', '#     ##############', '#     ##############', '#     ##############', '#     ##############',
+    '#     ##############', '#     ##############', '#     ##############', '####################'
+  ];
+  const L = base(map, { portals: [[3, 20, 11, 4]] });
+  assert.deepEqual(validateLevel(L), []);
+  assert.ok(routeToFinish(L, 2, 2, false), 'the forced route still finds a way');
+});
+
+test('a square that bounces back onto a portal exit right away does not jump again', () => {
+  const L = base([
+    '############',
+    '#          #',
+    '#  1       #',
+    '#          #',
+    '#          #',
+    '#          #',
+    '#  2     F #',
+    '#          #',
+    '############'
+  ], { portals: [[6, 2, 2, 5]] });
+  const g = makeGame(L, { seed: 1 });
+  const p = g.squares[0];
+  let warps = 0;
+  /* drive right into the swirl at (6,2); it comes out at (2,5) heading right; then force it straight back left */
+  play(g, 0.6, (gg) => { if (gg.events.some((e) => e.type === 'warp' && e.s === p)) { warps++; p.ux = -1; p.uy = 0; } });
+  assert.equal(warps, 1, 'only the first jump');
 });
