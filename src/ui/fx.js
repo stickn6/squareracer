@@ -2,7 +2,7 @@ import { HEAT_R } from '../sim/constants.js';
 import { noise, tone } from './audio.js';
 import { calm } from './env.js';
 import { app } from './state.js';
-import { OUTCOL, OUTWORD, PAPER, RAINBOW, SUN, hue } from './theme.js';
+import { BUBBLE, OUTCOL, OUTWORD, PAPER, RAINBOW, SUN, hue } from './theme.js';
 
 /* ----- effects: particles, pop-up words, rings, screen shake, and turning sim events into sound + visuals ----- */
 export const parts = [], pops = [], rings = [], ghosts = [], bolts = [], flashes = [];
@@ -154,6 +154,29 @@ export function handleEvents() {
         burst(e.x, e.y, app.g.boss.type === 'frost' ? '#a8e0ff' : SUN, 40, 14, 0.34); burst(e.x, e.y, '#ffffff', 20, 10, 0.26); burst(e.x, e.y, app.g.boss.type === 'frost' ? '#4aa3d8' : '#3b4046', 16, 8, 0.3);
         rings.push({ x: e.x, y: e.y, r: 4.5, life: 0, max: 0.5 }); flashes.push({ x: e.x, y: e.y, r: 4.5, life: 0, max: 0.4 });
         noise(0.5, 0.26, 800); tone(160, 40, 0.5, 'sine', 0.2); jolt(0.6);
+        break;
+      case 'star':
+        /* each star chimes a little higher than the last */
+        burst(e.x, e.y, SUN, 16, 8, 0.22); burst(e.x, e.y, '#ffffff', 8, 5, 0.16);
+        rings.push({ x: e.x, y: e.y, r: 1.2, life: 0, max: 0.3 });
+        pop(e.x, e.y - 0.9, e.got === e.total ? 'ALL STARS!' : e.got + '/' + e.total, SUN);
+        tone(660 * Math.pow(1.12, e.got), 0, 0.09, 'triangle', 0.07); tone(990 * Math.pow(1.12, e.got), 0, 0.14, 'triangle', 0.06, 0.08);
+        if (e.got === e.total) { tone(1047, 0, 0.12, 'square', 0.05, 0.2); tone(1319, 0, 0.12, 'square', 0.05, 0.3); tone(1568, 0, 0.25, 'square', 0.05, 0.4); }
+        break;
+      case 'bubble':
+        burst(e.x, e.y, BUBBLE, 12, 6, 0.2); pop(s.x, s.y - 1.4, 'BUBBLE!', BUBBLE);
+        tone(300, 900, 0.18, 'sine', 0.09); tone(600, 1400, 0.12, 'sine', 0.05, 0.1);
+        break;
+      case 'saved':
+        burst(s.x, s.y, BUBBLE, 24, 10, 0.24); burst(s.x, s.y, '#ffffff', 12, 7, 0.18);
+        rings.push({ x: s.x, y: s.y, r: 1.6, life: 0, max: 0.3 });
+        pop(s.x, s.y - 1.4, 'SAVED!', BUBBLE);
+        noise(0.08, 0.1, 5000); tone(1200, 400, 0.15, 'sine', 0.08); jolt(0.12);
+        break;
+      case 'warp':
+        burst(e.x1, e.y1, '#ffffff', 10, 6, 0.2); burst(e.x2, e.y2, hue(s.col), 14, 7, 0.22);
+        rings.push({ x: e.x2, y: e.y2, r: 1.3, life: 0, max: 0.3 });
+        if (s === p) { tone(400, 1600, 0.16, 'sine', 0.07); tone(1600, 800, 0.1, 'triangle', 0.04, 0.12); }
         break;
       case 'finish':
         burst(s.x, s.y, hue(s.col), 30, 10, 0.3); burst(s.x, s.y, PAPER, 16, 7, 0.22);

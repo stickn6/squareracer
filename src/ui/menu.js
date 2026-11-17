@@ -13,6 +13,7 @@ import { CHIP, PALETTE, kindOf } from './theme.js';
 
 /* ----- menu: colour/skin picker, lives slider, level grid ----- */
 export function buildMenu() {
+  $('levelCount').textContent = String(LEVELS.length);
   var box = $('colors'), skins = $('skins'); box.textContent = ''; skins.textContent = '';
   PALETTE.forEach(function (c) {
     var b = document.createElement('button');
@@ -65,7 +66,8 @@ export function refreshMenu() {
   LEVELS.forEach(function (L, i) {
     var b = $('level-' + (i + 1)), best = store.best[i];
     b.classList.toggle('done', best > 0);
-    b.querySelector('.best').textContent = best > 0 ? 'Best ' + best.toFixed(1) + ' s' : 'Not cleared';
+    var nStars = L.map.join('').split('*').length - 1, got = store.stars[i] || 0;
+    b.querySelector('.best').textContent = (best > 0 ? 'Best ' + best.toFixed(1) + ' s' : 'Not cleared') + (nStars && best > 0 ? ' · ★ ' + got + '/' + nStars : '');
     drawThumb(b.querySelector('canvas'), L, me);
   });
   var n = nextLevel(), all = LEVELS.every(function (L, i) { return store.best[i] > 0; });

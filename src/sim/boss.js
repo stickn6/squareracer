@@ -1,6 +1,6 @@
 import { COP_CHASE, COP_REST, COP_SPEED, COP_WIND, FROST_FAN, FROST_GAP, FROST_TELL, HALF, ICE_FREEZE, SHARD_R, SHARD_SPEED } from './constants.js';
 import { stepDuel } from './duel.js';
-import { breakCrate, hurt, moveAxis, rejit, tileAt } from './world.js';
+import { breakCrate, hurt, moveAxis, popShield, rejit, tileAt } from './world.js';
 
 /* ----- bosses ----- */
 export function inZone(b, s) { var z = b.zone; return s.x > z[0] && s.x < z[2] && s.y > z[1] && s.y < z[3]; }
@@ -14,9 +14,13 @@ export function nearInZone(g, b) {
   }
   return best;
 }
+/* returns false when a bubble shield (or the moment of safety after one pops) saves the square */
 export function knockOut(g, s, b) {
+  if (s.safe > 0) return false;
+  if (s.shield) { popShield(g, s); return false; }
   s.hp = 0; s.dead = true; s.outBy = b.type;
   g.events.push({ type: 'out', s: s, how: b.type, bx: b.x, by: b.y });
+  return true;
 }
 export function stepBoss(g, dt) {
   var b = g.boss, S = g.squares, i, s, t, dx, dy;
@@ -96,7 +100,7 @@ export function stepBoss(g, dt) {
     s = S[i]; if (s.dead) continue;
     var ox = b.half + HALF - Math.abs(s.x - b.x), oy = b.half + HALF - Math.abs(s.y - b.y);
     if (ox <= 0 || oy <= 0) continue;
-    if (b.type === 'cop' && b.phase === 'chase' && b.run >= COP_WIND) { knockOut(g, s, b); b.phase = 'rest'; b.t = COP_REST; b.target = null; g.events.push({ type: 'phew', x: b.x, y: b.y, bust: true }); continue; }
+    if (b.type === 'cop' && b.phase === 'chase' && b.run >= COP_WIND) { var got = knockOut(g, s, b); b.phase = 'rest'; b.t = COP_REST; b.target = null; g.events.push({ type: 'phew', x: b.x, y: b.y, bust: got }); continue; }
     var sgn;
     if (ox < oy) { sgn = s.x >= b.x ? 1 : -1; moveAxis(g, s, 0, sgn * (ox + 0.002), true); s.ux = sgn * Math.abs(s.ux); }
     else { sgn = s.y >= b.y ? 1 : -1; moveAxis(g, s, 1, sgn * (oy + 0.002), true); s.uy = sgn * Math.abs(s.uy); }

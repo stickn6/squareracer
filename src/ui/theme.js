@@ -17,6 +17,9 @@ export const PALETTE = [
   { id: 'dragon', name: 'Dragon', skin: 'dragon', fill: '#8e3fd6', light: '#ffb347' },
   { id: 'tiger', name: 'Tiger', skin: 'tiger', fill: '#ff8a1e', light: '#ffc892' }
 ];
+/* portal pairs: both ends of pair k share PORTAL[k] */
+export const PORTAL = ['#22c7ff', '#ff5fd2', '#8ae234', '#ff9f1c'];
+export const BUBBLE = '#7fd8ff';
 export const RAINBOW = ['#e8372f', '#ff8a1e', '#f7d21c', '#2fc33a', '#2b50e6', '#8e3fd6'];
 export const KIND = { race: 'Race', battle: 'Battle', gun: 'Gunfight', heat: 'Heat round', boss: 'Boss race', duel: 'Boss duel' };
 export const CHIP = { race: 'Race', battle: 'Battle', gun: 'Guns', heat: 'Heat', boss: 'Boss', duel: 'Duel' };

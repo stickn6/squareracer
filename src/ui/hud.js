@@ -20,5 +20,6 @@ export function updateHud() {
       el.innerHTML = html; el.setAttribute('aria-label', Math.max(0, p.hp) + ' of ' + p.maxHp + ' lives');
     }
   } else mode = app.g.boss ? 'Boss · ' + app.g.boss.name : p.stun > 0 ? 'Race · stunned' : 'Race';
+  if (app.g.stars.total) mode += ' · ★ ' + app.g.stars.got + '/' + app.g.stars.total;
   if (mode !== hudCache.mode) { hudCache.mode = mode; $('hudMode').textContent = mode; }
 }

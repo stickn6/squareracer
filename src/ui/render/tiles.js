@@ -1,7 +1,51 @@
 import { calm } from '../env.js';
 import { app } from '../state.js';
-import { INK, PAPER, SUN } from '../theme.js';
+import { INK, PAPER, PORTAL, SUN } from '../theme.js';
 import { ctx, label } from './canvas.js';
+
+/* a five-point star centred on (x, y), outer radius r, onto any 2D context */
+export function starPath(c, x, y, r, spin) {
+  c.beginPath();
+  for (var k = 0; k < 10; k++) {
+    var a = -Math.PI / 2 + spin + k * Math.PI / 5, rr = k % 2 ? r * 0.45 : r;
+    if (k) c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); else c.moveTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr);
+  }
+  c.closePath();
+}
+
+/* portals sit on the floor under everything: a swirl of rings in the pair's colour */
+export function drawPortals(now) {
+  var P = app.g.portals, t = calm() ? 0 : now / 1000;
+  for (var k = 0; k < P.length; k++) {
+    var col = PORTAL[k % PORTAL.length], ends = [[P[k].ax, P[k].ay], [P[k].bx, P[k].by]];
+    for (var e = 0; e < 2; e++) {
+      var x = ends[e][0] + 0.5, y = ends[e][1] + 0.5;
+      ctx.beginPath(); ctx.arc(x, y, 0.95, 0, 6.283); ctx.fillStyle = col; ctx.globalAlpha = 0.3; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.lineWidth = 0.12; ctx.lineCap = 'round';
+      for (var r = 0; r < 3; r++) {
+        var rad = 0.3 + r * 0.24, a0 = t * (3 - r) * (e ? -1 : 1) + r * 2;
+        ctx.strokeStyle = r === 1 ? INK : col;
+        ctx.beginPath(); ctx.arc(x, y, rad, a0, a0 + 4.2); ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.strokeStyle = INK; ctx.lineWidth = 0.08; ctx.beginPath(); ctx.arc(x, y, 0.95, 0, 6.283); ctx.stroke();
+    }
+  }
+}
+
+/* stars to collect: big, bobbing and twinkling so they read at a glance */
+export function drawStars(now) {
+  var t = calm() ? 0 : now / 1000, D = app.g.dyn;
+  for (var i = 0; i < D.length; i++) {
+    var x = D[i].x, y = D[i].y;
+    if (app.g.grid[y][x] !== '*') continue;
+    var bob = Math.sin(t * 3 + x * 1.7 + y) * 0.08, tw = Math.sin(t * 2 + x + y * 2) * 0.25, glow = 0.3 + 0.15 * Math.sin(t * 5 + x);
+    ctx.beginPath(); ctx.arc(x + 0.5, y + 0.5 + bob, 0.78, 0, 6.283); ctx.fillStyle = 'rgba(255,212,58,' + glow.toFixed(2) + ')'; ctx.fill();
+    starPath(ctx, x + 0.5, y + 0.5 + bob, 0.62, tw);
+    ctx.fillStyle = SUN; ctx.fill(); ctx.strokeStyle = INK; ctx.lineWidth = 0.09; ctx.lineJoin = 'round'; ctx.stroke();
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 0.38, y + 0.34 + bob, 0.1, 0.1);
+  }
+}
 
 export function drawTiles(now) {
   var t = now / 1000, i, d, ch, x, y;
@@ -22,6 +66,8 @@ export function drawTiles(now) {
       ctx.fillStyle = PAPER; ctx.fillRect(x + 0.04, y + 0.3, 0.92, 0.4);
       ctx.strokeStyle = INK; ctx.lineWidth = 0.08; ctx.strokeRect(x + 0.04, y + 0.04, 0.92, 0.92);
       label('TNT', x + 0.5, y + 0.52, 0.3, INK);
+    } else if (ch === '*') {
+      continue; /* drawn by drawStars, above the boss room tint */
     } else if (ch === '+') {
       var pulse = 0.5 + 0.5 * Math.sin(t * 6 + x + y);
       ctx.fillStyle = SUN; ctx.globalAlpha = 0.75 + 0.25 * pulse; ctx.fillRect(x + 0.08, y + 0.08, 0.84, 0.84); ctx.globalAlpha = 1;

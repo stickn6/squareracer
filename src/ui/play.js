@@ -91,12 +91,17 @@ export function showResult() {
   app.resultShown = true;
   var L = LEVELS[app.lvl], ov = app.g.over, t = Math.round(app.g.time * 10) / 10, last = app.lvl === LEVELS.length - 1, title, text, actions;
   var again = function () { startLevel(app.lvl); };
+  var st = app.g.stars, starText = '';
+  if (st.total) {
+    if (ov.win && !(store.stars[app.lvl] >= st.got)) { store.stars[app.lvl] = st.got; persist(); }
+    starText = st.got === st.total ? ' You found every star!' : ' You found ' + st.got + ' of ' + st.total + ' stars.';
+  }
   if (ov.win) {
     var prev = store.best[app.lvl], isBest = !(prev > 0) || t < prev;
     if (isBest) { store.best[app.lvl] = t; persist(); }
     title = L.duel ? 'You beat ' + L.boss.name : L.boss ? 'You got past ' + L.boss.name : L.mode === 'race' ? 'First across' : 'Last square standing';
     text = 'Done in ' + t.toFixed(1) + ' s.' + (prev > 0 ? (isBest ? ' New best, down from ' + prev.toFixed(1) + ' s.' : ' Your best is ' + prev.toFixed(1) + ' s.') : '') +
-      (last ? ' That was the final level.' : '');
+      starText + (last ? ' That was the final level.' : '');
     actions = last ? [['Back to levels', showMenu], ['Play again', again]] :
       [['Next level', function () { startLevel(app.lvl + 1); }], ['Play again', again], ['Levels', showMenu]];
   } else {
@@ -109,6 +114,7 @@ export function showResult() {
     }
     else if (ov.reason === 'burn') { title = ov.who.col.name + ' melted you'; text = 'A rival reached the flame first. Get to it before they do, or keep well clear of the ring.'; }
     else { title = ov.who.col.name + ' got there first'; text = 'A rival reached the red zone ahead of you after ' + t.toFixed(1) + ' s.'; }
+    text += starText;
     actions = [['Try again', again], ['Levels', showMenu]];
   }
   showOverlay({ kicker: kicker(), title: title, text: text, actions: actions });

@@ -2,6 +2,7 @@ import { stepBoss, stepShards } from './boss.js';
 import { BOOST_MULT, BOOST_TIME, BOSS_HALF, CLASH_EDGE, COP_CHASE, FROST_GAP, FROST_TELL, HALF, HEAT_RAMP, HEAT_TOP, ICE_FANS, ICE_GAPS, PLAYER_SPEED, SQ, STAG_TIME, VOLT_CHARGE, VOLT_IDLE, VOLT_R } from './constants.js';
 import { stepSparks } from './duel.js';
 import { stepBullets, stepGuns } from './guns.js';
+import { stepGoodies } from './goodies.js';
 import { stepHeats } from './heat.js';
 import { makeRng } from './rng.js';
 import { explode, hurt, knock, moveAxis, placeSaws, rejit, tileAt } from './world.js';
@@ -10,18 +11,22 @@ export function makeGame(level, opts) {
   opts = opts || {};
   var rnd = makeRng(opts.seed || 1);
   var grid = level.map.map(function (r) { return r.split(''); });
-  var H = grid.length, W = grid[0].length, spawns = [], dyn = [], guns = [], heats = [];
+  var H = grid.length, W = grid[0].length, spawns = [], dyn = [], guns = [], heats = [], bubbles = [], stars = 0;
   for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
     var c = grid[y][x];
     if (c >= '1' && c <= '7') { spawns[+c - 1] = { x: x + 0.5, y: y + 0.5 }; grid[y][x] = ' '; }
     else if (c === 'H') { heats.push({ x: x + 0.5, y: y + 0.5, holder: null, t: 0, cool: 0, path: null }); grid[y][x] = ' '; }
     else if (c === 'G') { guns.push({ x: x + 0.5, y: y + 0.5, holder: null, cool: 0, shots: 0, timer: 0, aim: -0.4 }); grid[y][x] = ' '; }
+    else if (c === 'B') { bubbles.push({ x: x + 0.5, y: y + 0.5, cool: 0 }); grid[y][x] = ' '; }
+    else if (c === '*') { stars++; dyn.push({ x: x, y: y }); }
     else if ('CT+durl'.indexOf(c) >= 0) dyn.push({ x: x, y: y });
   }
   var g = {
     level: level, mode: level.mode, W: W, H: H, grid: grid, dyn: dyn,
     squares: [], saws: [], fuses: [], guns: guns, bullets: [], heats: heats, time: 0, state: 'ready', over: null,
-    events: [], rnd: rnd, noEnd: !!opts.noEnd, boss: null, shards: [], sparks: [], waveId: 0
+    events: [], rnd: rnd, noEnd: !!opts.noEnd, boss: null, shards: [], sparks: [], waveId: 0,
+    stars: { got: 0, total: stars }, bubbles: bubbles,
+    portals: (level.portals || []).map(function (p) { return { ax: p[0], ay: p[1], bx: p[2], by: p[3] }; })
   };
   /* a flame can slide to and fro until somebody catches it: [x1, y1, x2, y2, speed] */
   (level.flames || []).forEach(function (f) {
@@ -51,7 +56,8 @@ export function makeGame(level, opts) {
     var s = {
       id: i, isPlayer: isP, x: spawns[i].x, y: spawns[i].y, ux: 0, uy: 0,
       speed: isP ? PLAYER_SPEED : level.aiSpeed,
-      hp: isP ? (level.mode === 'battle' && opts.playerHp > 0 ? opts.playerHp : 3) : (level.enemyHp || 3), inv: 0, boost: 0, stun: 0, ice: 0, stag: 0, tink: 0, gun: null, heat: null, burnedBy: null, outBy: null, dead: false, finT: -1
+      hp: isP ? (level.mode === 'battle' && opts.playerHp > 0 ? opts.playerHp : 3) : (level.enemyHp || 3), inv: 0, boost: 0, stun: 0, ice: 0, stag: 0, tink: 0, gun: null, heat: null, burnedBy: null, outBy: null, dead: false, finT: -1,
+      shield: false, safe: 0, warp: -1
     };
     s.maxHp = s.hp;
     if (isP) {
@@ -91,6 +97,7 @@ export function stepGame(g, dt) {
     s = S[i];
     if (s.dead) continue;
     if (s.inv > 0) s.inv = Math.max(0, s.inv - dt);
+    if (s.safe > 0) s.safe = Math.max(0, s.safe - dt);
     if (s.ice > 0) s.ice = Math.max(0, s.ice - dt);
     if (s.boost > 0) s.boost = Math.max(0, s.boost - dt);
     if (s.stag > 0) s.stag = Math.max(0, s.stag - dt);
@@ -160,6 +167,7 @@ export function stepGame(g, dt) {
     }
   }
 
+  if (g.stars.total || g.bubbles.length || g.portals.length) stepGoodies(g, dt);
   if (g.boss) stepBoss(g, dt);
   if (g.shards.length) stepShards(g, dt);
   if (g.sparks.length) stepSparks(g, dt);

@@ -1,4 +1,5 @@
-import { BLAST, EPS, HALF, INV_TIME, JIT, STUN_TIME } from './constants.js';
+import { BLAST, EPS, HALF, INV_TIME, JIT, SHIELD_INV, STUN_TIME } from './constants.js';
+import { warp } from './goodies.js';
 
 export function tileAt(g, cx, cy) {
   return (cx < 0 || cy < 0 || cx >= g.W || cy >= g.H) ? '#' : g.grid[cy][cx];
@@ -57,6 +58,7 @@ export function hurt(g, s, src) {
   if (s.dead || s.inv > 0 || g.over) return false;
   /* gun rounds: bullets are the only thing that hurts */
   if (g.level.gun && src !== 'bullet') return false;
+  if (s.shield) { popShield(g, s); return false; }
   /* races are about time: a hazard stuns. battles are about lives: a hazard takes one. */
   if (g.mode === 'race') {
     s.stun = STUN_TIME; s.inv = STUN_TIME + 0.6;
@@ -122,9 +124,15 @@ export function placeSaws(g, dt) {
   }
 }
 
+/* a bubble shield takes the hit instead of the square, then leaves a moment of safety */
+export function popShield(g, s) {
+  s.shield = false; s.inv = SHIELD_INV; s.safe = SHIELD_INV;
+  g.events.push({ type: 'saved', s: s });
+}
+
 /* dotted preview of where the player is headed */
 export function predictPath(g, s, dist, out) {
-  var gh = { x: s.x, y: s.y, ux: s.ux, uy: s.uy }, step = 0.12, n = Math.round(dist / step), b = g.boss;
+  var gh = { x: s.x, y: s.y, ux: s.ux, uy: s.uy, warp: s.warp, ghost: true }, step = 0.12, n = Math.round(dist / step), b = g.boss;
   out.length = 0;
   for (var i = 1; i <= n; i++) {
     var dx = gh.ux * step, dy = gh.uy * step;
@@ -137,6 +145,7 @@ export function predictPath(g, s, dist, out) {
         else { gh.uy = (gh.y >= b.y ? 1 : -1) * Math.abs(gh.uy); gh.y += (gh.y >= b.y ? 1 : -1) * oy; }
       }
     }
+    if (g.portals.length) warp(g, gh);
     if (i % 5 === 0) out.push(gh.x, gh.y);
   }
   return out;

@@ -1,8 +1,8 @@
-import { GUN_COOL, HEAT_R } from '../../sim/constants.js';
+import { BUBBLE_BACK, GUN_COOL, HEAT_R } from '../../sim/constants.js';
 import { calm } from '../env.js';
 import { parts } from '../fx.js';
 import { app } from '../state.js';
-import { INK, SUN } from '../theme.js';
+import { BUBBLE, INK, SUN } from '../theme.js';
 import { ctx } from './canvas.js';
 
 /* a stubby AK-style rifle: wooden stock, grip and handguard, curved magazine, long barrel */
@@ -95,4 +95,28 @@ export function drawBullets() {
     ctx.beginPath(); ctx.moveTo(b.x - ux * 0.5, b.y - uy * 0.5); ctx.lineTo(b.x, b.y); ctx.stroke();
   }
   ctx.lineCap = 'butt';
+}
+
+/* a soap bubble: shiny ring with a highlight. Used for bubble pickups and the shield around the player. */
+export function bubble(x, y, r, alpha, now) {
+  var wob = calm() ? 0 : Math.sin(now / 180) * 0.04;
+  ctx.globalAlpha = alpha;
+  ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, 6.283);
+  ctx.fillStyle = 'rgba(127,216,255,.42)'; ctx.fill();
+  ctx.strokeStyle = '#1f7fb8'; ctx.lineWidth = 0.14; ctx.stroke();
+  ctx.strokeStyle = BUBBLE; ctx.lineWidth = 0.07; ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 0.09; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(x, y, r * 0.72, -2.6, -1.7); ctx.stroke(); ctx.lineCap = 'butt';
+  ctx.globalAlpha = 1;
+}
+export function drawBubbles(now) {
+  for (var i = 0; i < app.g.bubbles.length; i++) {
+    var b = app.g.bubbles[i], bob = calm() ? 0 : Math.sin(now / 300 + i) * 0.08;
+    if (b.cool > 0) {
+      /* growing back: a faint outline that fills in */
+      ctx.strokeStyle = 'rgba(18,48,26,.25)'; ctx.lineWidth = 0.08; ctx.setLineDash([0.15, 0.15]);
+      ctx.beginPath(); ctx.arc(b.x, b.y, 0.6, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
+      bubble(b.x, b.y, 0.6 * (1 - b.cool / BUBBLE_BACK), 0.6, now);
+    } else bubble(b.x, b.y + bob, 0.7, 1, now);
+  }
 }

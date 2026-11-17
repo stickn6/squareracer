@@ -2,7 +2,7 @@ import { PALETTE } from './theme.js';
 
 /* ----- saved bits: colour, best times, sound, lives. store.best is keyed by level INDEX, so only ever append levels. ----- */
 const KEY = 'square-scramble-v1';
-export const store = { color: 'red', best: {}, muted: false, lives: 3 };
+export const store = { color: 'red', best: {}, stars: {}, muted: false, lives: 3 };
 try {
   var raw = localStorage.getItem(KEY);
   if (raw) {
@@ -10,6 +10,7 @@ try {
     if (o && typeof o === 'object') {
       if (PALETTE.some(function (c) { return c.id === o.color; })) store.color = o.color;
       if (o.best && typeof o.best === 'object') store.best = o.best;
+      if (o.stars && typeof o.stars === 'object') store.stars = o.stars;
       store.muted = !!o.muted;
       if (o.lives >= 1 && o.lives <= 50) store.lives = Math.round(o.lives);
     }

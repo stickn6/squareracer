@@ -1,4 +1,4 @@
-import { BOSSC, FINISH, GRASS, INK, MIDFLOOR, ORCHID, PAPER } from '../theme.js';
+import { BOSSC, BUBBLE, FINISH, GRASS, INK, MIDFLOOR, ORCHID, PAPER, PORTAL, SUN } from '../theme.js';
 
 export function drawThumb(el, L, me) {
   var c = el.getContext('2d'), m = L.map, H = m.length, W = m[0].length, u = 4;
@@ -10,10 +10,11 @@ export function drawThumb(el, L, me) {
     var ch = m[y][x]; if (ch === '#') continue;
     c.fillStyle = gr; c.fillRect(ox + x * u, oy + y * u, u, u);
     var col = ch === 'F' ? FINISH : 'AV<>'.indexOf(ch) >= 0 ? '#707a84' : ch === 'C' ? '#c99f58' : ch === 'T' ? '#d8322c' :
-      ch === '+' ? '#f0b400' : ch === 'G' ? '#7a4a1c' : ch === 'H' ? '#ff5a1a' : 'durl'.indexOf(ch) >= 0 ? 'rgba(20,150,170,.45)' : ch === '1' ? me.fill : (ch >= '2' && ch <= '7') ? INK : null;
+      ch === '+' ? '#f0b400' : ch === 'G' ? '#7a4a1c' : ch === 'H' ? '#ff5a1a' : ch === '*' ? SUN : ch === 'B' ? BUBBLE : 'durl'.indexOf(ch) >= 0 ? 'rgba(20,150,170,.45)' : ch === '1' ? me.fill : (ch >= '2' && ch <= '7') ? INK : null;
     if (col) { c.fillStyle = col; c.fillRect(ox + x * u, oy + y * u, u, u); }
   }
   (L.saws || []).forEach(function (w) { c.fillStyle = '#707a84'; c.fillRect(ox + w[0] * u - 3, oy + w[1] * u - 3, 6, 6); });
+  (L.portals || []).forEach(function (p, k) { c.fillStyle = PORTAL[k % PORTAL.length]; c.fillRect(ox + p[0] * u, oy + p[1] * u, u, u); c.fillRect(ox + p[2] * u, oy + p[3] * u, u, u); });
   (L.flames || []).forEach(function (f) { c.fillStyle = '#ff5a1a'; c.fillRect(Math.round(ox + f[0] * u) - 2, Math.round(oy + f[1] * u) - 2, 4, 4); });
   if (L.boss) {
     var bx = Math.round(ox + (L.boss.x - 1.3) * u), by = Math.round(oy + (L.boss.y - 1.3) * u), bs = Math.round(2.6 * u);

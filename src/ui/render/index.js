@@ -8,9 +8,9 @@ import { app } from '../state.js';
 import { FINISH, GRASS, INK, MIDFLOOR, ORCHID, PAPER, STEEL } from '../theme.js';
 import { drawBoss, drawBossFx, drawBossUnder, drawGhosts, drawShards, drawSparks } from './boss.js';
 import { ctx, cv, label, off, view } from './canvas.js';
-import { drawBullets, drawGuns, drawHeats } from './pickups.js';
+import { drawBubbles, drawBullets, drawGuns, drawHeats } from './pickups.js';
 import { drawSquare } from './squares.js';
-import { drawSaws, drawTiles } from './tiles.js';
+import { drawPortals, drawSaws, drawStars, drawTiles } from './tiles.js';
 
 /* ----- layout, the static level picture (walls, floor, spikes) cached in `base`, and the per-frame draw ----- */
 let dpr = 1, base = null;
@@ -86,11 +86,14 @@ export function draw(now) {
   off.y = shake > 0 ? Math.round((Math.random() * 2 - 1) * shake * c * 0.5) : 0;
   ctx.drawImage(base, view.ox - base.pad + off.x, view.oy - base.pad + off.y);
   ctx.setTransform(c, 0, 0, c, view.ox + off.x, view.oy + off.y);
+  if (app.g.portals.length) drawPortals(now);
   drawTiles(now);
   drawSaws();
   drawGuns(now);
   drawHeats(now);
+  if (app.g.bubbles.length) drawBubbles(now);
   if (app.g.boss) drawBossUnder(now);
+  if (app.g.stars.got < app.g.stars.total) drawStars(now);
 
   var aiming = steering() && app.g.state === 'playing' && !app.g.over && !p.dead && p.stun <= 0;
   if (aiming) {

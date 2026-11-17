@@ -13,3 +13,5 @@ export const WAVE_TELL = 0.6, WAVE_STEP = 0.6, DUEL_INV = 1.2, DUEL_GAP = [1.7, 
 /* Frost's duel: fans of ice shards. A hit takes a life and freezes the player solid for a moment. */
 export const ICE_TELL = 0.8, ICE_FREEZE = 0.7, ICE_SPEED = 8, ICE_GAPS = [2.1, 2.5, 2.9], ICE_FANS = [5, 3, 3];
 export const GUN_SHOTS = 3, GUN_FIRST = 0.4, GUN_GAP = 0.3, GUN_COOL = 1.0, BULLET_SPEED = 20, BULLET_INV = 0.45;
+/* goodies: a bubble shield comes back BUBBLE_BACK s after it is taken; a popped shield leaves SHIELD_INV s of safety */
+export const BUBBLE_BACK = 5, SHIELD_INV = 1.2;
