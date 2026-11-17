@@ -6,9 +6,9 @@ import { LEVELS } from '../src/levels/index.js';
 import { makeGame, stepGame } from '../src/sim/game.js';
 import { tileAt } from '../src/sim/world.js';
 import { HALF } from '../src/sim/constants.js';
+import { SOLID } from '../scripts/lib/validate-level.js';
 
 const STEP = 1 / 240;
-const SOLID = new Set(['#', 'A', 'V', '<', '>', 'C', 'T']);
 
 function run(L, opts, seconds) {
   const g = makeGame(L, opts);

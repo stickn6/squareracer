@@ -2,8 +2,8 @@ import { $ } from './dom.js';
 import { app } from './state.js';
 
 /* ----- HUD: only touches the DOM when a shown value changes ----- */
-const hudCache = { time: '', lives: -1, mode: '' };
-export function resetHud() { hudCache.time = ''; hudCache.lives = -1; hudCache.mode = ''; }
+const hudCache = { time: '', lives: -1, mode: '', stars: '' };
+export function resetHud() { hudCache.time = ''; hudCache.lives = -1; hudCache.mode = ''; hudCache.stars = ''; }
 export function updateHud() {
   var p = app.g.squares[0], t = app.g.time.toFixed(1);
   if (t !== hudCache.time) { hudCache.time = t; $('hudTime').textContent = t; }
@@ -20,6 +20,10 @@ export function updateHud() {
       el.innerHTML = html; el.setAttribute('aria-label', Math.max(0, p.hp) + ' of ' + p.maxHp + ' lives');
     }
   } else mode = app.g.boss ? 'Boss · ' + app.g.boss.name : p.stun > 0 ? 'Race · stunned' : 'Race';
-  if (app.g.stars.total) mode += ' · ★ ' + app.g.stars.got + '/' + app.g.stars.total;
+  var st = app.g.stars, stars = st.total ? '★' + st.got + '/' + st.total : '';
+  if (stars !== hudCache.stars) {
+    hudCache.stars = stars; var se = $('hudStars');
+    se.hidden = !stars; se.textContent = stars; se.setAttribute('aria-label', st.got + ' of ' + st.total + ' stars');
+  }
   if (mode !== hudCache.mode) { hudCache.mode = mode; $('hudMode').textContent = mode; }
 }

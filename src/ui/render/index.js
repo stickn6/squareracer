@@ -79,6 +79,7 @@ export function spike(b, x, y, c, rot) {
 
 export function draw(now) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1; ctx.setLineDash([]);
   ctx.clearRect(0, 0, cv.width, cv.height);
   if (!app.g || !base) return;
   var c = view.c, p = app.g.squares[0], i, q, shake = shakeAmount();
@@ -86,13 +87,13 @@ export function draw(now) {
   off.y = shake > 0 ? Math.round((Math.random() * 2 - 1) * shake * c * 0.5) : 0;
   ctx.drawImage(base, view.ox - base.pad + off.x, view.oy - base.pad + off.y);
   ctx.setTransform(c, 0, 0, c, view.ox + off.x, view.oy + off.y);
-  if (app.g.portals.length) drawPortals(now);
   drawTiles(now);
   drawSaws();
   drawGuns(now);
   drawHeats(now);
-  if (app.g.bubbles.length) drawBubbles(now);
   if (app.g.boss) drawBossUnder(now);
+  if (app.g.portals.length) drawPortals(now);
+  if (app.g.bubbles.length) drawBubbles(now);
   if (app.g.stars.got < app.g.stars.total) drawStars(now);
 
   var aiming = steering() && app.g.state === 'playing' && !app.g.over && !p.dead && p.stun <= 0;

@@ -1,6 +1,7 @@
 # Square Scramble
 
-Steer one square through 34 levels of races, battles, gunfights, heat rounds, boss races and boss duels.
+Steer one square through 40 levels of races, battles, gunfights, heat rounds, boss races and boss duels.
+Levels 35-40 are gentle ones for young kids, with stars to collect, bubble shields and swirl portals.
 Drag anywhere (or hold the arrow keys / WASD) to turn. Time slows while you steer.
 
 ## Play

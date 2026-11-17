@@ -98,11 +98,14 @@ export function drawBullets() {
 }
 
 /* a soap bubble: shiny ring with a highlight. Used for bubble pickups and the shield around the player. */
-export function bubble(x, y, r, alpha, now) {
-  var wob = calm() ? 0 : Math.sin(now / 180) * 0.04;
+export function bubble(x, y, r, alpha, now, thin) {
+  if (r < 0.05) return;
+  /* the wobble scales with the size, so a tiny regrowing bubble never gets a negative radius (ellipse() would throw) */
+  var wob = calm() ? 0 : Math.sin(now / 180) * 0.04 * Math.min(1, r / 0.6);
   ctx.globalAlpha = alpha;
   ctx.beginPath(); ctx.ellipse(x, y, r + wob, r - wob, 0, 0, 6.283);
-  ctx.fillStyle = 'rgba(127,216,255,.42)'; ctx.fill();
+  /* thin: the shield around the player, light enough that the player's own colour still shows through */
+  ctx.fillStyle = thin ? 'rgba(127,216,255,.16)' : 'rgba(127,216,255,.42)'; ctx.fill();
   ctx.strokeStyle = '#1f7fb8'; ctx.lineWidth = 0.14; ctx.stroke();
   ctx.strokeStyle = BUBBLE; ctx.lineWidth = 0.07; ctx.stroke();
   ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 0.09; ctx.lineCap = 'round';

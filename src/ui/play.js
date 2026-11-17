@@ -94,7 +94,7 @@ export function showResult() {
   var st = app.g.stars, starText = '';
   if (st.total) {
     if (ov.win && !(store.stars[app.lvl] >= st.got)) { store.stars[app.lvl] = st.got; persist(); }
-    starText = st.got === st.total ? ' You found every star!' : ' You found ' + st.got + ' of ' + st.total + ' stars.';
+    starText = st.got === st.total ? ' You found every star!' : st.got ? ' You found ' + st.got + ' of ' + st.total + ' stars.' : ' There are ' + st.total + ' stars hiding here!';
   }
   if (ov.win) {
     var prev = store.best[app.lvl], isBest = !(prev > 0) || t < prev;
@@ -114,7 +114,8 @@ export function showResult() {
     }
     else if (ov.reason === 'burn') { title = ov.who.col.name + ' melted you'; text = 'A rival reached the flame first. Get to it before they do, or keep well clear of the ring.'; }
     else { title = ov.who.col.name + ' got there first'; text = 'A rival reached the red zone ahead of you after ' + t.toFixed(1) + ' s.'; }
-    text += starText;
+    /* on a loss, only mention stars if some were found (no 'you found 0') */
+    if (st.got) text += starText + ' Win to keep them!';
     actions = [['Try again', again], ['Levels', showMenu]];
   }
   showOverlay({ kicker: kicker(), title: title, text: text, actions: actions });

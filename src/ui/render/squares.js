@@ -103,7 +103,7 @@ export function drawSquare(s, now) {
   drawFace(ctx, col, x, y, now, { stunned: stunned, flash: stag && Math.floor(now / 90) % 2 === 1, ux: s.ux, uy: s.uy });
   ctx.globalAlpha = 1;
   if (iced) iceBlock(x, y);
-  if (s.shield) bubble(x, y, 1.05, 1, now);
+  if (s.shield) bubble(x, y, 1.05, 1, now, true);
   if (s.gun) drawGun(s.x + Math.cos(s.gun.aim) * 0.42, s.y + 0.3 + Math.sin(s.gun.aim) * 0.42, s.gun.aim, 0.7, 1);
   if (stunned) {
     for (var k = 0; k < 3; k++) {

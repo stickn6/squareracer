@@ -1,0 +1,40 @@
+export default {
+  name: 'Portal Hop', mode: 'race', aiSpeed: 1.6, pdir: [1, 0],
+  boss: { type: 'frost', name: 'Frost', x: 10, y: 6.5, patrol: [7, 13], speed: 0.8, zone: [1, 3, 19, 12] },
+  /* the fast way: up through the gap and into the portal, which pops out right under the finish.
+     the long way: left along the star trail, grab the bubble, then past Frost for two more stars */
+  portals: [[16, 14, 16, 3]],
+  tip: 'Hop in the magic swirl, or grab the stars past Frost!',
+  map: [
+    '####################',
+    '#FFFFFFFFFFFFFFFFFF#',
+    '#FFFFFFFFFFFFFFFFFF#',
+    '#                  #',
+    '#                  #',
+    '#                  #',
+    '#                  #',
+    '#     *            #',
+    '#         ##       #',
+    '#                  #',
+    '#  *               #',
+    '#                  #',
+    '#     ##############',
+    '#                  #',
+    '#                  #',
+    '#  B               #',
+    '#      *           #',
+    '#                  #',
+    '#          *       #',
+    '#                  #',
+    '##############     #',
+    '#                  #',
+    '#                  #',
+    '#       *          #',
+    '#                  #',
+    '#   2 3 4          #',
+    '#                  #',
+    '# 1                #',
+    '#                  #',
+    '####################'
+  ]
+};

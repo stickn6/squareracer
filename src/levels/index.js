@@ -35,6 +35,13 @@ import L31 from './31-showdown.js';
 import L32 from './32-cold-snap.js';
 import L33 from './33-ice-rink.js';
 import L34 from './34-megavolt.js';
+/* 35-40: made for a young child: stars, bubble shields and swirl portals, with Frost and Volt */
+import L35 from './35-snow-stars.js';
+import L36 from './36-bubble-pop.js';
+import L37 from './37-portal-hop.js';
+import L38 from './38-zip-zap.js';
+import L39 from './39-snowball.js';
+import L40 from './40-thunder-party.js';
 
 export const LEVELS = [
   L01, L02, L03, L04, L05, L06,
@@ -42,5 +49,6 @@ export const LEVELS = [
   L13, L14, L15, L16, L17, L18,
   L19, L20, L21, L22, L23, L24,
   L25, L26, L27, L28, L29, L30,
-  L31, L32, L33, L34
+  L31, L32, L33, L34,
+  L35, L36, L37, L38, L39, L40
 ];

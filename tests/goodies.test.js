@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { makeGame, stepGame } from '../src/sim/game.js';
 import { validateLevel } from '../scripts/lib/validate-level.js';
+import { reach, routeToFinish } from '../scripts/lib/reach.js';
 
 const STEP = 1 / 240;
 function play(g, seconds, each) {
@@ -13,13 +14,14 @@ function play(g, seconds, each) {
 }
 const base = (map, extra) => Object.assign({ name: 'T', mode: 'race', aiSpeed: 0.01, pdir: [1, 0], tip: '', map }, extra);
 
-test('the player collects stars it drives over; rivals do not', () => {
+test('the player collects stars it drives over', () => {
   const L = base([
     '############',
     '#          #',
     '# 1  *  * F#',
     '#          #',
-    '#2         #',
+    '#  2       #',
+    '#          #',
     '############'
   ]);
   assert.deepEqual(validateLevel(L), []);
@@ -29,6 +31,36 @@ test('the player collects stars it drives over; rivals do not', () => {
   assert.equal(g.stars.got, 2);
   assert.equal(ev.filter((t) => t === 'star').length, 2);
   assert.ok(g.over && g.over.win);
+});
+
+test('rivals drive over stars without taking them', () => {
+  const L = base([
+    '############',
+    '#          #',
+    '#  2 * * * #',
+    '#          #',
+    '#  1      F#',
+    '#          #',
+    '############'
+  ], { aiSpeed: 6 });
+  const g = makeGame(L, { seed: 1, noPlayer: true, noEnd: true });
+  const r = g.squares[1];
+  r.ux = 1; r.uy = 0; /* drive the rival straight along the star row */
+  play(g, 1.2);
+  assert.ok(r.x > 8, 'the rival crossed the star row');
+  assert.equal(g.stars.got, 0);
+  assert.equal(g.grid[2].join('').split('*').length - 1, 3, 'all three stars still there');
+});
+
+test('stars touched after the round is decided do not count', () => {
+  const L = base(['##########', '#        #', '# 1   F* #', '#        #', '# 2      #', '#        #', '##########']);
+  const g = makeGame(L, { seed: 1 });
+  play(g, 2);
+  assert.ok(g.over && g.over.win);
+  g.state = 'playing';
+  const p = g.squares[0]; p.x = 7.5; p.y = 2.5;
+  stepGame(g, STEP);
+  assert.equal(g.stars.got, 0);
 });
 
 test('a bubble shield saves the player from a spike stun once, then grows back', () => {
@@ -42,14 +74,17 @@ test('a bubble shield saves the player from a spike stun once, then grows back',
   ]);
   const g = makeGame(L, { seed: 1 });
   const p = g.squares[0];
-  const ev = play(g, 0.6);
+  play(g, 0.4);
   assert.equal(p.shield, true, 'picked up the bubble');
-  const ev2 = play(g, 1.0);
+  const ev2 = play(g, 0.6);
   assert.ok(ev2.includes('saved'), 'the shield popped on the spikes');
+  assert.ok(!ev2.includes('stun'), 'no stun while the shield took the hit');
   assert.equal(p.shield, false);
-  assert.equal(p.stun, 0, 'no stun while the shield took the hit');
-  assert.ok(g.bubbles[0].cool > 0);
-  assert.ok(!ev.includes('stun'));
+  assert.ok(g.bubbles[0].cool > 0, 'the bubble is growing back');
+  /* after it grows back, driving over it again gives a new shield */
+  p.stun = 0; p.ux = -1; p.uy = 0;
+  const ev3 = play(g, 6, (gg) => { if (gg.squares[0].x < 3) { gg.squares[0].ux = 1; } });
+  assert.ok(ev3.includes('bubble'), 'took the regrown bubble');
 });
 
 test('a bubble shield saves the player from a boss knockout', async () => {
@@ -91,4 +126,56 @@ test('portals move squares to the other end, keep their heading, and do not boun
 test('portal ends need open floor around them', () => {
   const L = base(['########', '#1     #', '#  #  F#', '#2     #', '########'], { portals: [[2, 2, 5, 2]] });
   assert.ok(validateLevel(L).some((e) => e.includes('open floor')));
+});
+
+test('portal ends must be 2+ tiles apart', () => {
+  const L = base(['############', '#          #', '#          #', '#  1     F #', '#          #', '#  2       #', '#          #', '############'], { portals: [[5, 2, 6, 2]] });
+  assert.ok(validateLevel(L).some((e) => e.includes('too close')));
+});
+
+test('spawns need a clear tile all round', () => {
+  const L = base(['########', '#      #', '#  #   #', '#  1 F #', '#      #', '# 2    #', '########']);
+  assert.ok(validateLevel(L).some((e) => e.includes('spawn 1')));
+});
+
+test('reach: one-way gates block only their own axis', () => {
+  /* the only way down is through a pair of 'r' gates: moving down through them is allowed */
+  const down = base([
+    '########',
+    '#      #',
+    '#  1   #',
+    '#      #',
+    '###rr###',
+    '###rr###',
+    '#      #',
+    '#FFFFFF#',
+    '########'
+  ]);
+  /* the only way left is through 'r' gates, which only open to the right */
+  const left = base([
+    '##########',
+    '#   ##   #',
+    '#FF rr 1 #',
+    '#FF rr   #',
+    '#   ##   #',
+    '##########'
+  ]);
+  const right = base(['##########', '#   ##   #', '# 1 rr FF#', '#   rr FF#', '#   ##   #', '##########']);
+  assert.equal(reach(down).finish, true);
+  assert.equal(reach(left).finish, false);
+  assert.equal(reach(right).finish, true);
+});
+
+test('reach and the bot route both use portals', () => {
+  const L = base([
+    '##############',
+    '#      #     #',
+    '#  1   #     #',
+    '#      #  F  #',
+    '#      #     #',
+    '##############'
+  ], { portals: [[4, 3, 10, 2]] });
+  assert.equal(reach(L).finish, true);
+  const pts = routeToFinish(L, 3, 2, false);
+  assert.ok(pts && pts.some((q) => q.portal), 'route goes through the portal');
 });

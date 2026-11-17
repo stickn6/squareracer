@@ -5,6 +5,8 @@ import { BUBBLE_BACK, EPS, HALF } from './constants.js';
    [[ax, ay, bx, by], ...] in tile columns/rows, and a square whose centre enters one end pops out of the other. */
 export function stepGoodies(g, dt) {
   var S = g.squares, i, k, s, b, cx, cy;
+  /* once the round is decided nothing more counts (the sim keeps running briefly in slow motion) */
+  if (g.over) return;
   for (k = 0; k < g.bubbles.length; k++) if (g.bubbles[k].cool > 0) g.bubbles[k].cool = Math.max(0, g.bubbles[k].cool - dt);
   for (i = 0; i < S.length; i++) {
     s = S[i]; if (s.dead) continue;

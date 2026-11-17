@@ -31,6 +31,14 @@ export function validateLevel(L) {
   check(new Set(digits).size === digits.length, 'a spawn digit appears twice');
   digits.forEach((d, k) => check(d === String(k + 1), 'spawn digits must run 1, 2, 3 ... without gaps'));
   check(digits.length >= (L.duel ? 1 : 2), 'needs the player and at least one rival');
+  /* a square is centred on its spawn tile and is 1.3 tiles wide, so the 8 tiles around a spawn must not be solid */
+  L.map.forEach((row, y) => [...row].forEach((c, x) => {
+    if (c < '1' || c > '7') return;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      check(!SOLID.has(at(x + dx, y + dy)), `spawn ${c} at ${x}, ${y} touches '${at(x + dx, y + dy)}' at ${x + dx}, ${y + dy}; squares need a clear tile all round`);
+    }
+  }));
+  if (L.enemyHp !== undefined) check(num(L.enemyHp) && L.enemyHp > 0, 'enemyHp must be a positive number');
 
   if (L.mode === 'race') check(all.includes('F'), 'a race needs a finish zone (F)');
   if (L.gun) check(all.includes('G'), 'gun rounds need a G tile');
@@ -46,11 +54,13 @@ export function validateLevel(L) {
 
   /* portals: [ax, ay, bx, by] tile column/row of each end. A square lands centred on the far end, and it is wider than
      one tile, so each end and all 8 tiles around it must be open floor (or a star / finish). Ends must not be shared. */
-  const ends = new Set();
+  /* ends at least 2 tiles apart (in both x and y), or a square leaving one end can step straight into another and ping-pong */
+  const ends = [];
   (L.portals || []).forEach((p, k) => {
     if (!check(Array.isArray(p) && p.length === 4 && p.every(Number.isInteger), `portal ${k} must be [ax, ay, bx, by] in whole tiles`)) return;
     for (const [x, y] of [[p[0], p[1]], [p[2], p[3]]]) {
-      check(!ends.has(x + ',' + y), `portal ${k} reuses the tile ${x}, ${y}`); ends.add(x + ',' + y);
+      for (const [ex, ey] of ends) check(Math.max(Math.abs(ex - x), Math.abs(ey - y)) >= 2, `portal end ${x}, ${y} is too close to another portal end at ${ex}, ${ey} (keep them 2+ tiles apart)`);
+      ends.push([x, y]);
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const t = at(x + dx, y + dy);
         check(t === ' ' || t === '*' || t === 'F' || t === '+', `portal ${k} end ${x}, ${y} needs open floor around it; found '${t}' at ${x + dx}, ${y + dy}`);

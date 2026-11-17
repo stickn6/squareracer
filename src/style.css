@@ -73,6 +73,8 @@ button:focus-visible { outline: 3px solid var(--finish-deep); outline-offset: 3p
 #hudName { font-weight: 700; font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #hudMode { font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .hud-stat { flex: none; display: flex; align-items: center; gap: 10px; }
+.hud-stars { font-family: var(--font-display); font-size: .95rem; color: var(--ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.hud-stars::first-letter { color: #e0a800; }
 .lives { display: flex; align-items: center; gap: 4px; }
 .lives .bar { display: block; width: 42px; height: 13px; border: 2px solid var(--ink); }
 .lives .bar b { display: block; height: 100%; background: var(--c, var(--finish)); }
