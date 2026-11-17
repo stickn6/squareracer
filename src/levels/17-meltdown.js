@@ -1,0 +1,30 @@
+export default {
+  name: 'Meltdown', mode: 'battle', heat: true, aiSpeed: 7.0, enemyHp: 3, pdir: [0, -1],
+  tip: 'The flame is inside the box. Steer through a gap before a rival bounces in.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ###  ###    #',
+    '#    #      #    #',
+    '#    #      #    #',
+    '#                #',
+    '#        H       #',
+    '#                #',
+    '#    #      #    #',
+    '#    #      #    #',
+    '#    ###  ###    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '##################'
+  ]
+};

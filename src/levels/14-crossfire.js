@@ -1,0 +1,30 @@
+export default {
+  name: 'Crossfire', mode: 'battle', gun: true, aiSpeed: 7.2, enemyHp: 3, pdir: [0, -1],
+  tip: 'Walls stop bullets and crates do not last. Break the line of fire when a rival is armed.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#     ######     #',
+    '#                #',
+    '#                #',
+    '#   #        #   #',
+    '#   #   CC   #   #',
+    '#   #   CC   #   #',
+    '#                #',
+    '#        G       #',
+    '#                #',
+    '#   #   CC   #   #',
+    '#   #   CC   #   #',
+    '#   #        #   #',
+    '#                #',
+    '#                #',
+    '#     ######     #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '##################'
+  ]
+};

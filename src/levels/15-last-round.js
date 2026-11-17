@@ -1,0 +1,30 @@
+export default {
+  name: 'Last Round', mode: 'battle', gun: true, aiSpeed: 7.2, enemyHp: 3, pdir: [0, -1],
+  tip: 'Two guns this time. Crates give cover until they are shot away.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#       G        #',
+    '#   ##      ##   #',
+    '#   ##      ##   #',
+    '#                #',
+    '#       CC       #',
+    '#       CC       #',
+    '#                #',
+    '#   ##      ##   #',
+    '#   ##      ##   #',
+    '#        G       #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '##################'
+  ]
+};

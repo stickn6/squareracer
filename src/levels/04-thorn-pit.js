@@ -1,0 +1,30 @@
+export default {
+  name: 'Thorn Pit', mode: 'battle', aiSpeed: 6.6, enemyHp: 2, pdir: [1, 0],
+  tip: 'Thorns cost you a life. Rivals shrug them off until you shove them in.',
+  map: [
+    '##################',
+    '#      VVVV      #',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#                #',
+    '#    AA          #',
+    '#   <##>         #',
+    '#   <##>         #',
+    '#    VV          #',
+    '#>              <#',
+    '#>              <#',
+    '#>              <#',
+    '#>              <#',
+    '#          AA    #',
+    '#         <##>   #',
+    '#         <##>   #',
+    '#          VV    #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '#      AAAA      #',
+    '##################'
+  ]
+};

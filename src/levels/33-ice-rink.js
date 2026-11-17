@@ -1,0 +1,33 @@
+export default {
+  name: 'Ice Rink', mode: 'battle', duel: true, aiSpeed: 0, pdir: [1, 0],
+  boss: { type: 'frost', name: 'Frost', x: 9, y: 3.5, duel: true, hp: 4, zone: [1, 1, 17, 23],
+    path: [4, 3.5, 14, 3.5], speed: 2.6, gaps: [2.2, 2.4, 2.6, 2.8], reaim: [1.1, 1.2, 2.0, 9], fans: [5, 5, 3, 3],
+    spots: [[4, 3.5, 14, 3.5], [4, 20.5, 14, 20.5], [3.5, 7, 3.5, 17], [14.5, 7, 14.5, 17]] },
+  tip: 'Frost skates along the walls and stops when he is about to throw. Four burns this time. The crates block his ice until it smashes them.',
+  map: [
+    '##################',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#      CCCC      #',
+    '#                #',
+    '#                #',
+    '#      C  C      #',
+    '#      C  C      #',
+    '#      C  C      #',
+    '#                #',
+    '#                #',
+    '#      CCCC      #',
+    '#                #',
+    '#        1       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '##################'
+  ]
+};

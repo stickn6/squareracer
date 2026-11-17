@@ -1,0 +1,33 @@
+export default {
+  name: 'Cold Snap', mode: 'battle', duel: true, aiSpeed: 0, pdir: [0, -1],
+  boss: { type: 'frost', name: 'Frost', x: 3.5, y: 3.5, duel: true, hp: 3, zone: [1, 1, 17, 23],
+    gaps: [2.4, 2.6, 2.8], reaim: [1.2, 1.3, 9], fans: [5, 3, 3],
+    spots: [[3.5, 3.5], [14.5, 3.5], [3.5, 11.5], [14.5, 11.5], [3.5, 20], [14.5, 20]] },
+  tip: 'You start with the heat ring. Get it onto Frost three times. His ice freezes you for a moment, so stay off the red lines.',
+  map: [
+    '##################',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#             1  #',
+    '#                #',
+    '#                #',
+    '##################'
+  ]
+};

@@ -1,0 +1,30 @@
+export default {
+  name: 'Flash Point', mode: 'battle', heat: true, aiSpeed: 6.4, enemyHp: 3, pdir: [0, -1],
+  tip: 'The flame sits in a nook at the far end. Ride the yellow pads straight up the middle to get there first.',
+  map: [
+    '##################',
+    '#      #   #     #',
+    '#      # H #     #',
+    '#      #   #     #',
+    '#                #',
+    '#   ##      ##   #',
+    '#   ##      ##   #',
+    '#                #',
+    '#        +       #',
+    '#        +       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#        +       #',
+    '#        +       #',
+    '#                #',
+    '#   ##      ##   #',
+    '#   ##      ##   #',
+    '#                #',
+    '#        +       #',
+    '# 2      1     3 #',
+    '#   4            #',
+    '#                #',
+    '##################'
+  ]
+};

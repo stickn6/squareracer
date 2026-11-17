@@ -1,0 +1,40 @@
+export default {
+  name: 'The Gauntlet', mode: 'race', aiSpeed: 10.0, pdir: [-1, 0],
+  tip: 'Everything at once. Keep to the middle past the teeth.',
+  saws: [
+    [6, 1.9, 6, 6.1, 4.5, 0.85, 0],
+    [11, 6.1, 11, 1.9, 4.5, 0.85, 0]
+  ],
+  map: [
+    '####################',
+    '#              FFFF#',
+    '#              FFFF#',
+    '#              FFFF#',
+    '#              FFFF#',
+    '#              FFFF#',
+    '#              FFFF#',
+    '#uuu################',
+    '#   l  #VV#  #VV   #',
+    '#   l  #  #  #     #',
+    '#   l     l        #',
+    '#   l     l        #',
+    '#   l     l        #',
+    '#   l     l        #',
+    '################uuu#',
+    '#     r  CC    r   #',
+    '#     r  CC    r   #',
+    '#     r  CCT   r   #',
+    '#     r  CC    r   #',
+    '#     r  CC    r   #',
+    '#uuu################',
+    '#   l              #',
+    '#   l              #',
+    '#   l     4   2    #',
+    '#   l +            #',
+    '#   l       3   1  #',
+    '#   l              #',
+    '#   l              #',
+    '#   l              #',
+    '####################'
+  ]
+};

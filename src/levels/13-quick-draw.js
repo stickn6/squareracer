@@ -1,0 +1,30 @@
+export default {
+  name: 'Quick Draw', mode: 'battle', gun: true, aiSpeed: 6.8, enemyHp: 3, pdir: [0, -1],
+  tip: 'Reach the gun first. It fires three shots at the nearest square, then drops. Only bullets hurt here.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ##    ##    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#        G       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ##    ##    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '##################'
+  ]
+};

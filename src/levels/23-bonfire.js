@@ -1,0 +1,30 @@
+export default {
+  name: 'Bonfire', mode: 'battle', heat: true, aiSpeed: 6.6, enemyHp: 3, pdir: [0, -1],
+  tip: 'Six rivals this time. Grab the flame just ahead of you, then chase all six down.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2    3     4  #',
+    '#                #',
+    '#    7           #',
+    '#                #',
+    '#   ##      ##   #',
+    '#   ##      ##   #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#        H       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#   ##      ##   #',
+    '#   ##      ##   #',
+    '#        1       #',
+    '#                #',
+    '#                #',
+    '# 5            6 #',
+    '#                #',
+    '#                #',
+    '##################'
+  ]
+};

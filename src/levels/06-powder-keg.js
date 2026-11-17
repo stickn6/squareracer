@@ -1,0 +1,30 @@
+export default {
+  name: 'Powder Keg', mode: 'battle', aiSpeed: 7.0, enemyHp: 3, pdir: [0, -1],
+  tip: 'TNT hurts every square in the blast, you included.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2    CC    3  #',
+    '#       CC       #',
+    '#       CC       #',
+    '#    T  CC  T    #',
+    '#       CC       #',
+    '#       CC       #',
+    '#                #',
+    '#CCCCCC    CCCCCC#',
+    '#CCCCCC    CCCCCC#',
+    '#       TT       #',
+    '#       TT       #',
+    '#CCCCCC    CCCCCC#',
+    '#CCCCCC    CCCCCC#',
+    '#                #',
+    '#       CC       #',
+    '#       CC       #',
+    '#    T  CC  T    #',
+    '#       CC       #',
+    '#       CC       #',
+    '#  1    CC    4  #',
+    '#                #',
+    '##################'
+  ]
+};

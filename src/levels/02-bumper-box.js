@@ -1,0 +1,30 @@
+export default {
+  name: 'Bumper Box', mode: 'battle', aiSpeed: 6.2, enemyHp: 2, pdir: [0, -1],
+  tip: 'Hit rivals nose-first. Whoever hits more head-on wins the clash.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#                #',
+    '#    ##    ##    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ##    ##    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '##################'
+  ]
+};

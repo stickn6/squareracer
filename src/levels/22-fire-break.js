@@ -1,0 +1,30 @@
+export default {
+  name: 'Fire Break', mode: 'battle', heat: true, aiSpeed: 6.8, enemyHp: 3, pdir: [0, -1],
+  tip: 'The flame is boxed in by crates. Hit the crates to smash a hole, then go back in through it.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    CCCCCCCC    #',
+    '#    C      C    #',
+    '#    C      C    #',
+    '#    C   H  C    #',
+    '#    C      C    #',
+    '#    C      C    #',
+    '#    CCCCCCCC    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '#                #',
+    '##################'
+  ]
+};

@@ -1,0 +1,31 @@
+export default {
+  name: 'Catch Fire', mode: 'battle', heat: true, aiSpeed: 6.4, enemyHp: 3, pdir: [0, -1],
+  flames: [[3, 16.5, 15, 16.5, 4.5]],
+  tip: 'This flame slides from side to side. Steer to where it is going, not where it is.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2     4    3  #',
+    '#                #',
+    '#                #',
+    '#      ####      #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#      ####      #',
+    '#                #',
+    '#                #',
+    '#  1             #',
+    '#                #',
+    '##################'
+  ]
+};

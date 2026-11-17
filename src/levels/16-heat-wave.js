@@ -1,0 +1,30 @@
+export default {
+  name: 'Heat Wave', mode: 'battle', heat: true, aiSpeed: 6.6, enemyHp: 3, pdir: [0, -1],
+  tip: 'Touch the flame first. Its ring melts every rival it reaches, and you keep it all round.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2          3  #',
+    '#                #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#  ##    H   ##  #',
+    '#  ##        ##  #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#       ##       #',
+    '#       ##       #',
+    '#                #',
+    '#                #',
+    '#  1          4  #',
+    '#                #',
+    '##################'
+  ]
+};

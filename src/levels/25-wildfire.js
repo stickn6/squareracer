@@ -1,0 +1,30 @@
+export default {
+  name: 'Wildfire', mode: 'battle', heat: true, aiSpeed: 7.0, enemyHp: 3, pdir: [0, -1],
+  tip: 'Six quick rivals and a walled-in flame. The wide gap at the bottom is yours. Do not miss it.',
+  map: [
+    '##################',
+    '#                #',
+    '#  2    3     4  #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ########    #',
+    '#    #      #    #',
+    '#    #      #    #',
+    '#    #      #    #',
+    '#                #',
+    '#        H       #',
+    '#    #      #    #',
+    '#    #      #    #',
+    '#    #      #    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '# 5            6 #',
+    '#                #',
+    '#        1       #',
+    '#             7  #',
+    '#                #',
+    '##################'
+  ]
+};

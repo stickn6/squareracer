@@ -1,0 +1,32 @@
+export default {
+  name: 'Showdown', mode: 'battle', duel: true, aiSpeed: 0, pdir: [0, -1],
+  boss: { type: 'volt', name: 'Volt', x: 9, y: 3.5, duel: true, hp: 3, zone: [1, 1, 17, 23],
+    spots: [[9, 3.5], [3.5, 3.5], [14.5, 3.5], [9, 11.5], [3.5, 20], [14.5, 20]] },
+  tip: 'You start with the heat ring. Get it onto Volt three times. Steer out of the red strip before his sparks arrive.',
+  map: [
+    '##################',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ##    ##    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#    ##    ##    #',
+    '#    ##    ##    #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#                #',
+    '#        1       #',
+    '#                #',
+    '##################'
+  ]
+};
